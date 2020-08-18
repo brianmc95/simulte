@@ -31,8 +31,13 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     int selectionWindowStartingSubframe_;
     int thresholdRSSI_;
     int cbrCountDown_;
+    int sensingWindowSizeOverride_;
 
     bool transmitting_;
+    bool randomScheduling_;
+
+    bool rssiFiltering_;
+    bool rsrpFiltering_;
 
     std::map<MacNodeId, simtime_t> previousTransmissionTimes_;
 
@@ -86,6 +91,10 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     simsignal_t sciFailedDueToInterference;
     simsignal_t sciUnsensed;
 
+    simsignal_t tbFailedDueToPropIgnoreSCI;
+    simsignal_t tbFailedDueToInterferenceIgnoreSCI;
+    simsignal_t tbDecodedIgnoreSCI;
+
     int sciReceived_;
     int sciDecoded_;
     int sciFailedHalfDuplex_;
@@ -102,6 +111,10 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     int tbFailedDueToInterference_;
     int sciFailedDueToProp_;
     int sciFailedDueToInterference_;
+
+    int tbFailedDueToPropIgnoreSCI_;
+    int tbFailedDueToInterferenceIgnoreSCI_;
+    int tbDecodedIgnoreSCI_;
 
     int sciUnsensed_;
 
@@ -129,9 +142,13 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     // Compute Candidate Single Subframe Resources which the MAC layer can use for transmission
     virtual void computeCSRs(LteMode4SchedulingGrant* &grant);
 
+    virtual void computeRandomCSRs(LteMode4SchedulingGrant* &grant);
+
     virtual void updateSubframe();
 
     virtual std::vector<std::tuple<double, int, int>> selectBestRSSIs(std::unordered_map<int, std::set<int>> possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
+
+    virtual std::vector<std::tuple<double, int, int>> selectBestRSRPs(std::unordered_map<int, std::set<int>> possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
 
     virtual std::tuple<int,int> decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo);
 

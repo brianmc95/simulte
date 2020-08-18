@@ -15,7 +15,6 @@
 #include "common/LteCommon.h"
 #include "corenetwork/nodes/ExtCell.h"
 #include "stack/phy/layer/LtePhyUe.h"
-#include "inet/physicallayer/pathloss/NakagamiFading.h"
 
 // attenuation value to be returned if max. distance of a scenario has been violated
 // and tolerating the maximum distance violation is enabled
@@ -283,6 +282,15 @@ LteRealisticChannelModel::LteRealisticChannelModel(ParameterMap& params,
     else
         fading_ = true;
 
+    //get shape factor
+    it = params.find("shape-factor");
+    if (it != params.end())
+    {
+        shapeFactor_ = it->second.doubleValue();
+    }
+    else
+        shapeFactor_ = 1.0;
+
     //get fading type
     it = params.find("fading-type");
     if (it != params.end())
@@ -343,13 +351,10 @@ LteRealisticChannelModel::LteRealisticChannelModel(ParameterMap& params,
     binder_ = getBinder();
     //clear jakes fading map structure
     jakesFadingMap_.clear();
-
-    nkgmf = new inet::physicallayer::NakagamiFading();
 }
 
 LteRealisticChannelModel::~LteRealisticChannelModel()
 {
-    delete nkgmf;
 }
 
 double LteRealisticChannelModel::getTxRxDistance(UserControlInfo* lteInfo)
@@ -484,7 +489,7 @@ double LteRealisticChannelModel::getAttenuation(MacNodeId nodeId, Direction dir,
     return attenuation;
 }
 
-double LteRealisticChannelModel::getAttenuation_D2D(MacNodeId nodeId, Direction dir, Coord coord,MacNodeId node2_Id, Coord coord_2)
+std::tuple<double, double> LteRealisticChannelModel::getAttenuation_D2D(MacNodeId nodeId, Direction dir, Coord coord,MacNodeId node2_Id, Coord coord_2)
 {
     double movement = .0;
     double speed = .0;
@@ -508,6 +513,7 @@ double LteRealisticChannelModel::getAttenuation_D2D(MacNodeId nodeId, Direction 
 
     //compute attenuation based on selected scenario and based on LOS or NLOS
     double attenuation = 0;
+    double noShadowingAttenuation = 0;
     double dbp = 0;
     switch (scenario_)
     {
@@ -534,6 +540,7 @@ double LteRealisticChannelModel::getAttenuation_D2D(MacNodeId nodeId, Direction 
     }
     //    Applying shadowing only if it is enabled by configuration
     //    log-normal shadowing
+    noShadowingAttenuation = attenuation;
     if (shadowing_)
     {
         double mean = 0;
@@ -608,7 +615,7 @@ double LteRealisticChannelModel::getAttenuation_D2D(MacNodeId nodeId, Direction 
 
     EV << "LteRealisticChannelModel::getAttenuation - computed attenuation at distance " << sqrDistance << " for UE2 is " << attenuation << endl;
 
-    return attenuation;
+    return std::make_tuple(noShadowingAttenuation, attenuation);
 }
 
 void LteRealisticChannelModel::updatePositionHistory(const MacNodeId nodeId,
@@ -1050,8 +1057,9 @@ std::tuple<std::vector<double>, double> LteRealisticChannelModel::getRSRP_D2D(Lt
     //=============== PATH LOSS + SHADOWING + FADING =================
 
     // attenuation for the desired signal
-    double attenuation = getAttenuation_D2D(sourceId, dir, sourceCoord, destId, destCoord); // dB
-    double originalAttenuation = attenuation;
+    std::tuple<double, double> attenuations = getAttenuation_D2D(sourceId, dir, sourceCoord, destId, destCoord); // dB
+    double noShadowingAttenuation = get<0>(attenuations);
+    double attenuation = get<1>(attenuations);
 
     attenuation -= antennaGainTx;
     attenuation -= antennaGainRx;
@@ -1079,16 +1087,16 @@ std::tuple<std::vector<double>, double> LteRealisticChannelModel::getRSRP_D2D(Lt
             }
             else if (fadingType_ == NAKAGAMI)
             {
-                inet::units::values::mps speed = inet::units::values::mps(SPEED_OF_LIGHT);
-                inet::units::values::Hz freq = inet::units::values::Hz(carrierFrequency_ * 1000000000);
-                inet::units::values::m dist = inet::units::values::m(sourceCoord.distance(destCoord));
-                fadingAttenuation = nkgmf->computePathLoss(speed, freq, dist);
+                int distance = sourceCoord.distance(destCoord);
+                double pathLossFree = 20*std::log10(distance) + 46.4 + 20*std::log10(carrierFrequency_ * 1e-9 / 5);
+
+                fadingAttenuation = gamma_d(getEnvir()->getRNG(0), shapeFactor_, pathLossFree / 1000.0 / shapeFactor_) * 1000.0;
             }
         }
 
-        attenuation -= fadingAttenuation;
+        double attenuationFaded = attenuation - fadingAttenuation;
 
-        double attenuationLinear = dBToLinear(-attenuation);
+        double attenuationLinear = dBToLinear(-attenuationFaded);
 
         double rsrp = txPowerDensity * attenuationLinear;
 
@@ -1102,7 +1110,7 @@ std::tuple<std::vector<double>, double> LteRealisticChannelModel::getRSRP_D2D(Lt
     }
     //============ END PATH LOSS + SHADOWING + FADING ===============
 
-    return std::make_tuple(rsrpVector, originalAttenuation);
+    return std::make_tuple(rsrpVector, noShadowingAttenuation);
 }
 
 std::vector<double> LteRealisticChannelModel::getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, MacNodeId destId, Coord destCoord, MacNodeId enbId)
@@ -1167,7 +1175,8 @@ std::vector<double> LteRealisticChannelModel::getSINR_D2D(LteAirFrame *frame, Us
     " - txPwr=" << recvPower << " - for ueId=" << sourceId << endl;
 
     // attenuation for the desired signal
-    double attenuation = getAttenuation_D2D(sourceId, dir, sourceCoord, destId, destCoord); // dB
+    std::tuple<double, double> attenuations = getAttenuation_D2D(sourceId, dir, sourceCoord, destId, destCoord); // dB
+    double attenuation = get<1>(attenuations);
 
     //compute attenuation (PATHLOSS + SHADOWING)
     recvPower -= attenuation; // (dBm-dB)=dBm
@@ -1385,10 +1394,22 @@ std::vector<double> LteRealisticChannelModel::getSINR_D2D(LteAirFrame *frame, Us
     {
         for (unsigned int i = 0; i < band_; i++)
         {
-            // compute final SINR
-            snrVector[i] -=  (noiseFigure + thermalNoise_);
+            {
+                // compute final SINR
+                double thermalNoiseLinear = std::pow (10.0, (thermalNoise_ - 30) / 10.0);
+                double noiseFigureLinear = std::pow (10.0, ueNoiseFigure_ / 10.0);
+                double noisePowerSpectralDensity =  thermalNoiseLinear * noiseFigureLinear;
 
-            EV << "LteRealisticChannelModel::getSINR_D2D - distance from my Peer = " << destCoord.distance(sourceCoord) << " - DIR=" << dirToA(dir) << " - snr[" << snrVector[i] << "]\n";
+                double rsrpPerReLinear = dBmToLinear(rsrpVector[i]);
+
+                double denSinr = (noisePowerSpectralDensity * 180000.0)/12;
+                denSinr = rsrpPerReLinear / denSinr;
+
+                // compute final SINR
+                snrVector[i] = linearToDb(denSinr);
+
+                EV << "LteRealisticChannelModel::getSINR_D2D - distance from my Peer = " << destCoord.distance(sourceCoord) << " - DIR=" << dirToA(dir) << " - snr[" << snrVector[i] << "]\n";
+            }
         }
     }
 
@@ -1481,6 +1502,7 @@ std::tuple<std::vector<double>, std::vector<double>> LteRealisticChannelModel::g
         for (unsigned int i = 0; i < band_; i++)
         {
             //        (        mW               +        mW            )
+            double interference = linearToDBm(inCellInterference[i]);
             denRssi = noisePowerSpectralDensity + inCellInterference[i];
             // Convert PSD [W/Hz] to linear power [W] for the single RE
             denRssi = (denRssi * 180000.0) / 12.0;
@@ -2039,7 +2061,7 @@ bool LteRealisticChannelModel::error_D2D(LteAirFrame *frame, UserControlInfo* lt
     return true;
 }
 
-bool LteRealisticChannelModel::error_Mode4(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, std::vector<double> sinrVector, int mcs, bool interference)
+std::tuple<bool, bool> LteRealisticChannelModel::error_Mode4(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, std::vector<double> sinrVector, int mcs)
 {
     EV << "LteRealisticChannelModel::error_Mode4" << endl;
 
@@ -2085,44 +2107,39 @@ bool LteRealisticChannelModel::error_Mode4(LteAirFrame *frame, UserControlInfo* 
     {
         //compare lambda min (smaller eingenvalues of channel matrix) with the threshold used to compute the rank
         if (binder_->phyPisaData.getLambda(id, 1) < lambdaMinTh_)
-            return false;
+            return std::make_tuple(false, false);
     }
 
-    // SINR vector(one SINR value for each band)
+    // SNR vector(one SNR value for each band)
     std::vector<double> snrV;
-    if (interference){
-        // We are calculating error based on SINR not SNR
-        snrV = sinrVector;
-    } else {
-        // We are calculating based on SNR only not SINR
-        if (lteInfo->getDirection() == D2D || lteInfo->getDirection() == D2D_MULTI) {
-            MacNodeId peerUeMacNodeId = lteInfo->getDestId();
-            Coord peerCoord = myCoord_;
-            // TODO get an appropriate way to get EnbId
-            MacNodeId enbId = 1;
+    if (lteInfo->getDirection() == D2D || lteInfo->getDirection() == D2D_MULTI) {
+        MacNodeId peerUeMacNodeId = lteInfo->getDestId();
+        Coord peerCoord = myCoord_;
+        // TODO get an appropriate way to get EnbId
+        MacNodeId enbId = 1;
 
-            if (lteInfo->getDirection() == D2D) {
-                snrV = getSINR_D2D(frame, lteInfo, peerUeMacNodeId, peerCoord, enbId);
-            } else  // D2D_MULTI
-            {
-                snrV = getSINR_D2D(frame, lteInfo, peerUeMacNodeId, peerCoord, enbId, rsrpVector, interference);
-            }
+        if (lteInfo->getDirection() == D2D) {
+            snrV = getSINR_D2D(frame, lteInfo, peerUeMacNodeId, peerCoord, enbId);
+        } else  // D2D_MULTI
+        {
+            snrV = getSINR_D2D(frame, lteInfo, peerUeMacNodeId, peerCoord, enbId, rsrpVector, false);
         }
     }
 
-    double bler = 0;
-    std::vector<double> totalbler;
-    double finalSuccess = 1;
+    double blerSnr = 0;
+    double blerSinr = 0;
+    double averageSnr = 0;
+    double averageSinr = 0;
+    double countUsedRbs = 0;
+
     RbMap rbmap = lteInfo->getGrantedBlocks();
     RbMap::iterator it;
     std::map<Band, unsigned int>::iterator jt;
 
     //for each Remote unit used to transmit the packet
-    for (it = rbmap.begin(); it != rbmap.end(); ++it)
-    {
+    for (it = rbmap.begin(); it != rbmap.end(); ++it) {
         //for each logical band used to transmit the packet
-        for (jt = it->second.begin(); jt != it->second.end(); ++jt)
-        {
+        for (jt = it->second.begin(); jt != it->second.end(); ++jt) {
             //this Rb is not allocated
             if (jt->second == 0) continue;
 
@@ -2134,47 +2151,64 @@ bool LteRealisticChannelModel::error_Mode4(LteAirFrame *frame, UserControlInfo* 
                 if (it->first != lteInfo->getCw()) continue;
 
             //Get the Bler
-            double snr = snrV[jt->first];//XXX because jt->first is a Band (=unsigned short)
-
-            if (snr > binder_->phyPisaData.maxSnr())
-                bler = 0;
-            else
-            if (lteInfo->getFrameType() == SCIPKT)
-            {
-                // TODO: Make this slightly tidier.
-                bler = binder_->phyPisaData.GetPscchBler(binder_->phyPisaData.AWGN, binder_->phyPisaData.SISO, snr);
-            }
-            else
-            {
-                if (analytical_)
-                    bler = binder_->phyPisaData.GetBlerAnalytical(mcs, snr);
-                else
-                    bler = binder_->phyPisaData.GetPsschBler(binder_->phyPisaData.AWGN, binder_->phyPisaData.SISO, mcs, snr);
-            }
-
-            double success = 1 - bler;
-            //compute the success probability according to the number of RB used
-            double successPacket = pow(success, (double)jt->second);
-
-            // compute the success probability according to the number of LB used
-            finalSuccess *= successPacket;
+            averageSnr += dBToLinear(snrV[jt->first]);
+            averageSinr += dBToLinear(sinrVector[jt->first]);
+            countUsedRbs += 1;
         }
     }
-    // Compute total error probability
-    double per = 1 - finalSuccess;
-    // Harq Reduction
-    double totalPer = per * pow(harqReduction_, nTx - 1);
+
+    averageSnr = linearToDb(averageSnr/countUsedRbs);
+    averageSinr = linearToDb(averageSinr/countUsedRbs);
+
+    if (averageSnr > binder_->phyPisaData.maxSnr())
+        blerSnr = 0;
+    else
+    if (lteInfo->getFrameType() == SCIPKT)
+    {
+        // TODO: Make this slightly tidier.
+        blerSnr = binder_->phyPisaData.GetPscchBler(binder_->phyPisaData.AWGN, binder_->phyPisaData.SISO, averageSnr);
+    }
+    else
+    {
+        if (analytical_)
+            blerSnr = binder_->phyPisaData.GetBlerAnalytical(mcs, averageSnr);
+        else
+            blerSnr = binder_->phyPisaData.GetPsschBler(binder_->phyPisaData.AWGN, binder_->phyPisaData.SISO, mcs, averageSnr);
+    }
+
+    if (averageSinr > binder_->phyPisaData.maxSnr())
+        blerSinr = 0;
+    else
+    if (lteInfo->getFrameType() == SCIPKT)
+    {
+        // TODO: Make this slightly tidier.
+        blerSinr = binder_->phyPisaData.GetPscchBler(binder_->phyPisaData.AWGN, binder_->phyPisaData.SISO, averageSinr);
+    }
+    else
+    {
+        if (analytical_)
+            blerSinr = binder_->phyPisaData.GetBlerAnalytical(mcs, averageSinr);
+        else
+            blerSinr = binder_->phyPisaData.GetPsschBler(binder_->phyPisaData.AWGN, binder_->phyPisaData.SISO, mcs, averageSinr);
+    }
 
     double er = uniform(getEnvir()->getRNG(0),0.0, 1.0);
 
-    if (er <= totalPer)
+    bool resultSnr = true;
+    bool resultSinr = true;
+
+    if (er <= blerSnr)
     {
         // Signal too weak, we can't receive it
-        return false;
+        resultSnr = false;
     }
-    // Signal is strong enough, receive this Signal
 
-    return true;
+    if (er <= blerSinr) {
+        // Interference too strong, we can't decode this packet
+        resultSinr = false;
+    }
+
+    return std::make_tuple(resultSnr, resultSinr);
 }
 
 void LteRealisticChannelModel::computeLosProbability(double d,
@@ -2777,10 +2811,14 @@ bool LteRealisticChannelModel::computeInCellD2DInterference(MacNodeId eNbId, Mac
         if (interferringId == destId || interferringId == senderId)
             continue;
 
+        if (destCoord.distance(ltePhy->getCoord()) > 1500)
+            continue;
+
         EV<<NOW<<" ComputeInCellD2DInterference.Interference from Node: "<<interferringId<<endl;
 
         // Compute attenuation using data structures within the Macro Cell.
-        att = getAttenuation_D2D(interferringId, dir, ltePhy->getCoord(), destId, destCoord); // dB
+        std::tuple<double, double> attenuations = getAttenuation_D2D(interferringId, dir, ltePhy->getCoord(), destId, destCoord); // dB
+        att = get<1>(attenuations);
 
         // The antenna set in computeTxParams is always "MACRO". Here create a fake set with MACRO as the only element
         std::set<Remote> antennas;

@@ -65,6 +65,9 @@ protected:
    bool crLimit_;
    bool dccMechanism_;
    bool adjacencyPSCCHPSSCH_;
+   bool randomScheduling_;
+   bool nonPeriodic_;
+   bool alwaysReschedule_;
    int missedTransmissions_;
 
    double remainingTime_;
@@ -113,6 +116,8 @@ protected:
    simsignal_t grantRequests;
    simsignal_t packetDropDCC;
    simsignal_t macNodeID;
+   simsignal_t rrcSelected;
+   simsignal_t retainGrant;
 
 //   // Lte AMC module
 //   LteAmc *amc_;

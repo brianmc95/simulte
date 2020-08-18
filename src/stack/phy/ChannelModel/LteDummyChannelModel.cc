@@ -147,7 +147,7 @@ bool LteDummyChannelModel::error_D2D(LteAirFrame *frame, UserControlInfo* lteInf
     return true;
 }
 
-bool LteDummyChannelModel::error_Mode4(LteAirFrame *frame, UserControlInfo* lteInfo,std::vector<double> rsrpVector, std::vector<double> sinrVector, int mcs, bool interference=true)
+std::tuple<bool, bool> LteDummyChannelModel::error_Mode4(LteAirFrame *frame, UserControlInfo* lteInfo,std::vector<double> rsrpVector, std::vector<double> sinrVector, int mcs)
 {
     // Number of RTX
     unsigned char nTx = lteInfo->getTxNumber();
@@ -166,12 +166,12 @@ bool LteDummyChannelModel::error_Mode4(LteAirFrame *frame, UserControlInfo* lteI
         EV << "This is NOT your lucky day (" << er << " < " << totalPer
            << ") -> do not receive." << endl;
         // Signal too weak, we can't receive it
-        return false;
+        return std::make_tuple(false, false);
     }
     // Signal is strong enough, receive this Signal
     EV << "This is your lucky day (" << er << " > " << totalPer
        << ") -> Receive AirFrame." << endl;
-    return true;
+    return std::make_tuple(true, true);
 }
 
 double LteDummyChannelModel::getTxRxDistance(UserControlInfo* lteInfo)

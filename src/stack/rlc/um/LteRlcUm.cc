@@ -186,7 +186,6 @@ void LteRlcUm::initialize()
 
     packetSize_ = par("packetSize");
     scenario3gpp_ = par("scenario3gpp");
-    counter3gpp_ = 0;
 
     WATCH_MAP(txBuffers_);
     WATCH_MAP(rxBuffers_);

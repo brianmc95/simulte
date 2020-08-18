@@ -69,6 +69,9 @@ void LteMacVUeMode4::initialize(int stage)
         crLimit_ = par("crLimit");
         dccMechanism_ = par("dccMechanism");
         adjacencyPSCCHPSSCH_ = par("adjacencyPSCCHPSSCH");
+        randomScheduling_ = par("randomScheduling");
+        nonPeriodic_ = par("nonPeriodic");
+        alwaysReschedule_ = par("alwaysReschedule");
         maximumCapacity_ = 0;
         cbr_=0;
         currentCw_=0;
@@ -94,6 +97,8 @@ void LteMacVUeMode4::initialize(int stage)
         grantRequests           = registerSignal("grantRequests");
         packetDropDCC           = registerSignal("packetDropDCC");
         macNodeID               = registerSignal("macNodeID");
+        rrcSelected             = registerSignal("resourceReselectionCounter");
+        retainGrant             = registerSignal("retainGrant");
     }
     else if (stage == inet::INITSTAGE_NETWORK_LAYER_3)
     {
@@ -736,15 +741,15 @@ void LteMacVUeMode4::handleMessage(cMessage *msg)
             double dur = duration.dbl();
             remainingTime_ = lteInfo->getDuration() - dur;
 
-            if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
+            if (schedulingGrant_ == NULL)
+            {
+                macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority());
+            }
+            else if ((schedulingGrant_ != NULL && periodCounter_ > remainingTime_) || alwaysReschedule_)
             {
                 emit(grantBreakTiming, 1);
                 delete schedulingGrant_;
                 schedulingGrant_ = NULL;
-                macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority());
-            }
-            else if (schedulingGrant_ == NULL)
-            {
                 macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority());
             }
             else
@@ -812,10 +817,19 @@ void LteMacVUeMode4::handleSelfMessage()
             double randomReReserve = dblrand(1);
             if (randomReReserve < probResourceKeep_)
             {
-                int expiration = intuniform(5, 15, 3);
+                int expiration = 0;
+                if (resourceReservationInterval_ == 0.5){
+                    expiration = intuniform(10, 30, 3);
+                } else if (resourceReservationInterval_ == 0.2){
+                    expiration = intuniform(25, 75, 3);
+                } else {
+                    expiration = intuniform(5, 15, 3);
+                }
                 mode4Grant -> setResourceReselectionCounter(expiration);
                 mode4Grant -> setFirstTransmission(true);
                 expirationCounter_ = expiration * mode4Grant->getPeriod();
+                emit(rrcSelected, expiration);
+                emit(retainGrant, 1);
             }
         }
         if (--periodCounter_>0 && !mode4Grant->getFirstTransmission())
@@ -1007,7 +1021,6 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
         // Start at subchannel numsubchannels.
         // Remove 1 subchannel from each grant.
         // Account for the two blocks taken for the SCI
-        totalGrantedBlocks += 2;
         int initialBand;
         if (initiailSubchannel == 0){
             // If first subchannel to use need to make sure to add the number of subchannels for the SCI messages
@@ -1015,7 +1028,7 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
         } else {
             initialBand = (numSubchannels_ * 2) + (initiailSubchannel * (subchannelSize_ - 2));
         }
-        for (Band b = initialBand; b < (initialBand + subchannelSize_ - 2) * mode4Grant->getNumSubchannels() ; b++) {
+        for (Band b = initialBand; b < initialBand + (subchannelSize_ * mode4Grant->getNumSubchannels()) ; b++) {
             grantedBlocks[MACRO][b] = 1;
             ++totalGrantedBlocks;
         }
@@ -1024,7 +1037,7 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
     mode4Grant->setStartTime(selectedStartTime);
     mode4Grant->setPeriodic(true);
     mode4Grant->setGrantedBlocks(grantedBlocks);
-    mode4Grant->setTotalGrantedBlocks(totalGrantedBlocks);
+    mode4Grant->setTotalGrantedBlocks(totalGrantedBlocks); // account for the 2 RBs used for the sci message
     mode4Grant->setDirection(D2D_MULTI);
     mode4Grant->setCodewords(1);
     mode4Grant->setStartingSubchannel(initiailSubchannel);
@@ -1078,7 +1091,7 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
 
     int minSubchannelNumberPSSCH = minSubchannelNumberPSSCH_;
     int maxSubchannelNumberPSSCH = maxSubchannelNumberPSSCH_;
-    int resourceReservationInterval = resourceReservationInterval_;
+    double resourceReservationInterval = resourceReservationInterval_;
 
     if (useCBR_)
     {
@@ -1123,13 +1136,29 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
     int numSubchannels = intuniform(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH, 2);
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
+    if ((randomScheduling_) || (nonPeriodic_) ){
+        mode4Grant -> setResourceReselectionCounter(0);
+        mode4Grant -> setExpiration(0);
+        emit(rrcSelected, 0);
+    } else {
 
-    // Based on restrictResourceReservation interval But will be between 1 and 15
-    // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
-    int resourceReselectionCounter = intuniform(5, 15, 3);
+        // Based on restrictResourceReservation interval But will be between 1 and 15
+        // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
+        int resourceReselectionCounter = 0;
 
-    mode4Grant -> setResourceReselectionCounter(resourceReselectionCounter);
-    mode4Grant -> setExpiration(resourceReselectionCounter * resourceReservationInterval);
+        if (resourceReservationInterval_ == 0.5) {
+            resourceReselectionCounter = intuniform(10, 30, 3);
+        } else if (resourceReservationInterval_ == 0.2) {
+            resourceReselectionCounter = intuniform(25, 75, 3);
+        } else {
+            resourceReselectionCounter = intuniform(5, 15, 3);
+        }
+
+        mode4Grant -> setResourceReselectionCounter(resourceReselectionCounter);
+        mode4Grant -> setExpiration(resourceReselectionCounter * resourceReservationInterval);
+        emit(rrcSelected, resourceReselectionCounter);
+    }
+
 
     LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
 
@@ -1242,8 +1271,24 @@ void LteMacVUeMode4::flushHarqBuffers()
                                 // Gotten to the point of the final transmission must determine if we reselect or not.
                                 double randomReReserve = dblrand(1);
                                 if (randomReReserve > probResourceKeep_) {
-                                    int expiration = intuniform(rri/100, 15, 3);
+                                    int expiration = 0;
+                                    if (resourceReservationInterval_ == 0.5){
+                                        expiration = intuniform(10, 30, 3);
+                                    } else if (resourceReservationInterval_ == 0.2){
+                                        expiration = intuniform(25, 75, 3);
+                                    } else {
+                                        if (rri / 100 > 5){
+                                            // This ensures that in the case that our rri is higher than the minimum 5
+                                            // that we ensure we send at least one more transmission
+                                            expiration = intuniform(rri/100, 15, 3);
+                                        } else {
+                                            expiration = intuniform(5, 15, 3);
+                                        }
+                                    }
+
                                     mode4Grant->setResourceReselectionCounter(expiration);
+                                    emit(rrcSelected, expiration);
+                                    emit(retainGrant, 1);
                                     // This remains at the default RRI this ensures that grants don't live overly long if they return to lower RRIs
                                     expirationCounter_ = expiration * resourceReservationInterval_ * 100;
                                 } else {

@@ -70,8 +70,9 @@ class LteChannelModel
      * @param lteinfo pointer to the user control info
      * @param rsrpVector the received signal for each RB, if it has already been computed
      * @param mcs the modulation and coding scheme used in sending the message.
+     * @returns a tuple specifying whether it was successfully received based on SNR and SINR
      */
-    virtual bool error_Mode4(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, std::vector<double> sinrVector, int mcs, bool interference)=0;
+    virtual std::tuple<bool, bool> error_Mode4(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, std::vector<double> sinrVector, int mcs)=0;
     /*
      * Compute Received useful signal for D2D transmissions
      */

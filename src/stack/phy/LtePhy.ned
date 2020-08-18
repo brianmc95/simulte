@@ -89,12 +89,16 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 	    @class("LtePhyVUeMode4");
 	    
 	    bool adjacencyPSCCHPSSCH = default(true);
-	    int pStep = default(100); 
+	    bool rssiFiltering = default(true);
+	    bool rsrpFiltering = default(false);
+	    bool randomScheduling = default(false);
+	    int pStep = default(100);
         int numSubchannels = default(10);
 	    int subchannelSize = default(5);
 	    int selectionWindowStartingSubframe = default(1);
 	    int shapeFactor = default(6);
 	    int thresholdRSSI = default(22);
+	    int sensingWindowSizeOverride = default(-1);
 
 	    @signal[cbr];
  		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
@@ -163,6 +167,13 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
         @statistic[posX](title="X position of node (at reception time)"; source="posX"; record=mean, vector);
         @signal[posY];
         @statistic[posY](title="Y position of node (at reception time)"; source="posY"; record=mean, vector);
+
+        @signal[tbFailedDueToPropIgnoreSCI];
+        @statistic[tbFailedDueToPropIgnoreSCI](title="Number of failed TBs due to propogation"; source="tbFailedDueToPropIgnoreSCI"; record=sum,vector);
+        @signal[tbFailedDueToInterferenceIgnoreSCI];
+        @statistic[tbFailedDueToInterferenceIgnoreSCI](title="Number of failed TBs due to interference"; source="tbFailedDueToInterferenceIgnoreSCI"; record=sum,vector);
+        @signal[tbDecodedIgnoreSCI];
+        @statistic[tbDecodedIgnoreSCI](title="Number of failed TBs due to interference"; source="tbDecodedIgnoreSCI"; record=sum,vector);
 }
 
 // 

@@ -114,6 +114,8 @@ class LteRealisticChannelModel : public LteChannelModel
     //avg delay spred in jakes fading
     double delayRMS_;
 
+    double shapeFactor_;
+
     bool tolerateMaxDistViolation_;
 
     //Struct used to store information about jakes fading
@@ -168,7 +170,7 @@ class LteRealisticChannelModel : public LteChannelModel
      * @param dir traffic direction
      * @param coord position of end point comunication (if dir==UL is the position of UE else is the position of eNodeB)
      */
-    virtual double getAttenuation_D2D(MacNodeId nodeId, Direction dir, inet::Coord coord,MacNodeId node2_Id, inet::Coord coord_2);
+    virtual std::tuple<double, double> getAttenuation_D2D(MacNodeId nodeId, Direction dir, inet::Coord coord,MacNodeId node2_Id, inet::Coord coord_2);
     /*
      * Compute sir for each band for user nodeId according to multipath fading
      *
@@ -225,8 +227,9 @@ class LteRealisticChannelModel : public LteChannelModel
      * @param lteinfo pointer to the user control info
      * @param rsrpVector the received signal for each RB, if it has already been computed
      * @param mcs the modulation and coding scheme used in sending the message.
+     * @returns a tuple specifying whether it was successfully received based on SNR and SINR
      */
-    virtual bool error_Mode4(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, std::vector<double> sinrVector, int mcs, bool interference);
+    virtual std::tuple<bool, bool> error_Mode4(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, std::vector<double> sinrVector, int mcs);
     /*
      * Compute the error probability of the transmitted packet according to cqi used, txmode, and the received power
      * after that it throws a random number in order to check if this packet will be corrupted or not

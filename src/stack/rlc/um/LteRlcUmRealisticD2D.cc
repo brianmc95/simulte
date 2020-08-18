@@ -68,6 +68,7 @@ void LteRlcUmRealisticD2D::initialize(int stage)
 
         packetSize_ = par("packetSize");
         scenario3gpp_ = par("scenario3gpp");
+        counter3gpp_ = intuniform(0, 4, 0);
 
         if (nodeType.compare("ENODEB") == 0)
         {
