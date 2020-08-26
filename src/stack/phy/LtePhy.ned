@@ -92,6 +92,8 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 	    bool rssiFiltering = default(true);
 	    bool rsrpFiltering = default(false);
 	    bool randomScheduling = default(false);
+	    bool counterMechanism = default(false);
+	    int counterMaximum = default(40);
 	    int pStep = default(100);
         int numSubchannels = default(10);
 	    int subchannelSize = default(5);

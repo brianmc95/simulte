@@ -38,6 +38,10 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
 
     bool rssiFiltering_;
     bool rsrpFiltering_;
+    bool counterMechanism_;
+    int counterMax_;
+    int currentCounter_;
+    cMessage* counterMessage_;
 
     std::map<MacNodeId, simtime_t> previousTransmissionTimes_;
 
@@ -159,6 +163,10 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     virtual void initialiseSensingWindow();
 
     virtual int translateIndex(int index);
+
+    virtual void counterMechanism();
+
+    virtual void counterMechanismSend(int initialSubchannel);
 
   public:
     LtePhyVUeMode4();

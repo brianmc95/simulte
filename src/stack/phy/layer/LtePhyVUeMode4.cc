@@ -52,6 +52,9 @@ void LtePhyVUeMode4::initialize(int stage)
         transmitting_ = false;
         rssiFiltering_ = par("rssiFiltering");
         rsrpFiltering_ = par("rsrpFiltering");
+        counterMechanism_ = par("counterMechanism");
+        counterMax_ = par("counterMaximum");
+        currentCounter_ = -1;
 
         int thresholdRSSI = par("thresholdRSSI");
 
@@ -306,6 +309,10 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
         }
         delete msg;
     }
+    else if (msg->isName("CounterMessage"))
+    {
+        counterMechanism();
+    }
     else
         LtePhyUe::handleSelfMessage(msg);
 }
@@ -379,7 +386,11 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
     {
         // Generate CSRs or save the grant use when generating SCI information
         LteMode4SchedulingGrant* grant = check_and_cast<LteMode4SchedulingGrant*>(msg);
-        if (grant->getTotalGrantedBlocks() == 0){
+        if (counterMechanism_){
+            grant->setControlInfo(lteInfo);
+            sciGrant_ = grant;
+        }
+        else if (grant->getTotalGrantedBlocks() == 0){
             // Generate a vector of CSRs and send it to the MAC layer
             if (randomScheduling_){
                 computeRandomCSRs(grant);
@@ -392,7 +403,6 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
         else
         {
             sciGrant_ = grant;
-            lteInfo->setUserTxParams(sciGrant_->getUserTxParams()->dup());
             lteInfo->setGrantedBlocks(sciGrant_->getGrantedBlocks());
             lteInfo->setTotalGrantedBlocks(sciGrant_->getTotalGrantedBlocks());
             lteInfo->setDirection(D2D_MULTI);
@@ -410,25 +420,31 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
         frame = new LteAirFrame("harqFeedback-grant");
     }
 
-    // if this is a multicast/broadcast connection, send the frame to all neighbors in the hearing range
-    // otherwise, send unicast to the destination
+    if (counterMechanism_){
+        msg->setControlInfo(lteInfo);
+        counterMessage_ = msg;
+        counterMechanism();
+    } else {
+        // if this is a multicast/broadcast connection, send the frame to all neighbors in the hearing range
+        // otherwise, send unicast to the destination
 
-    EV << "LtePhyVUeMode4::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
-       << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
+        EV << "LtePhyVUeMode4::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
+           << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
 
-    // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
-    transmitting_ = true;
+        // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
+        transmitting_ = true;
 
-    lteInfo->setGrantedBlocks(availableRBs_);
+        lteInfo->setGrantedBlocks(availableRBs_);
 
-    frame = prepareAirFrame(msg, lteInfo);
+        frame = prepareAirFrame(msg, lteInfo);
 
-    emit(tbSent, 1);
+        emit(tbSent, 1);
 
-    if (lteInfo->getDirection() == D2D_MULTI)
-        sendBroadcast(frame);
-    else
-        sendUnicast(frame);
+        if (lteInfo->getDirection() == D2D_MULTI)
+            sendBroadcast(frame);
+        else
+            sendUnicast(frame);
+    }
 }
 
 RbMap LtePhyVUeMode4::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
@@ -1323,32 +1339,6 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
     bool interference_result = false;
     bool prop_result = false;
 
-    RemoteSet r = lteInfo->getUserTxParams()->readAntennaSet();
-    if (r.size() > 1)
-    {
-        // DAS
-        for (RemoteSet::iterator it = r.begin(); it != r.end(); it++)
-        {
-            EV << "LtePhyVUeMode4::decodeAirFrame: Receiving Packet from antenna " << (*it) << "\n";
-
-            /*
-             * On UE set the sender position
-             * and tx power to the sender das antenna
-             */
-
-            // cc->updateHostPosition(myHostRef,das_->getAntennaCoord(*it));
-            // Set position of sender
-            // Move m;
-            // m.setStart(das_->getAntennaCoord(*it));
-            RemoteUnitPhyData data;
-            data.txPower=lteInfo->getTxPower();
-            data.m=getRadioPosition();
-            frame->addRemoteUnitPhyDataVector(data);
-        }
-        // apply analog models For DAS
-        interference_result=channelModel_->errorDas(frame,lteInfo);
-    }
-
     cPacket* pkt = frame->decapsulate();
 
     if(lteInfo->getFrameType() == SCIPKT)
@@ -1558,6 +1548,133 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
 
     EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
        << (interference_result ? "RECEIVED" : "NOT RECEIVED") << endl;
+}
+
+void LtePhyVUeMode4::counterMechanism()
+{
+    // If not started counter
+    // Setup counter 0,CW-1
+    if (currentCounter_ == -1){
+        // Have not setup the counter so time to do so
+        currentCounter_ = intuniform(0, counterMax_-1, 2);
+
+        cMessage* updateSubframe = new cMessage("CounterMessage");
+        updateSubframe->setSchedulingPriority(1);        // Check the last subframe at start of the subframe
+        scheduleAt(NOW + TTI, updateSubframe);
+    } else {
+        // Else
+        // Check the last subframe and determine Num subchannels RSRP/RSSI > threshold (use CBR calc for this)
+        // Counter -= numFree subchannels
+
+        int lastSubframe = 0;
+        if (sensingWindowFront_ > 0){
+            lastSubframe = sensingWindowFront_ - 1;
+        } else {
+            lastSubframe = (pStep_ * 10) - 1;
+            if (sensingWindowSizeOverride_ > 0){
+                lastSubframe = sensingWindowSizeOverride_ - 1;
+            }
+        }
+        int freeCount = 0;
+        std::vector<Subchannel*> currentSubframe = sensingWindow_[lastSubframe];
+        for (int i = 0; i < currentSubframe.size(); i++) {
+            if (currentSubframe[i]->getSensed()) {
+                if (currentSubframe[i]->getAverageRSSI() < thresholdRSSI_) {
+                    freeCount++;
+                }
+            }
+        }
+
+        currentCounter_ -= freeCount;
+
+        if (currentCounter_ <= 0) {
+            // If counter == 0
+            // Select a free subchannel (technically based on the usual SPS mechanism but for now just pick @ random as purely
+            // aperiodic not mixed
+            int selectedSubchannel = intuniform(0, numSubchannels_-sciGrant_->getNumSubchannels(), 2);
+
+            counterMechanismSend(selectedSubchannel);
+
+            currentCounter_ = -1;
+        } else {
+            cMessage* updateSubframe = new cMessage("CounterMessage");
+            updateSubframe->setSchedulingPriority(1);        // Check the last subframe at start of the subframe
+            scheduleAt(NOW + TTI, updateSubframe);
+        }
+    }
+}
+
+void LtePhyVUeMode4::counterMechanismSend(int initialSubchannel)
+{
+    // About to transmit so make sure that we mark this as a transmission
+    transmitting_ = true;
+
+    cMessage* msg = counterMessage_;
+
+    UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(msg->removeControlInfo());
+    UserControlInfo* sciInfo = check_and_cast<UserControlInfo*>(sciGrant_->removeControlInfo());
+
+    LteAirFrame* frame;
+
+    // So at this point we know we have to send and we need to setup the correct resources for sending
+    // Determine the RBs on which we will send our message
+    RbMap grantedBlocks;
+    int totalGrantedBlocks = 0;
+
+    int finalSubchannel = initialSubchannel + sciGrant_->getNumSubchannels();
+    if (adjacencyPSCCHPSSCH_){
+        // Adjacent mode just provide the allocated bands
+
+        for (int i=initialSubchannel;i<finalSubchannel;i++)
+        {
+            int initialBand = i * subchannelSize_;
+            for (Band b = initialBand; b < initialBand + subchannelSize_ ; b++)
+            {
+                grantedBlocks[MACRO][b] = 1;
+                ++totalGrantedBlocks;
+            }
+        }
+    } else {
+        // Start at subchannel numsubchannels.
+        // Remove 1 subchannel from each grant.
+        // Account for the two blocks taken for the SCI
+        int initialBand;
+        if (initialSubchannel == 0){
+            // If first subchannel to use need to make sure to add the number of subchannels for the SCI messages
+            initialBand = numSubchannels_ * 2;
+        } else {
+            initialBand = (numSubchannels_ * 2) + (initialSubchannel * (subchannelSize_ - 2));
+        }
+        for (Band b = initialBand; b < initialBand + (subchannelSize_ * sciGrant_->getNumSubchannels()) ; b++) {
+            grantedBlocks[MACRO][b] = 1;
+            ++totalGrantedBlocks;
+        }
+    }
+
+    // We got to the counter mechanism which is good
+    sciInfo->setGrantedBlocks(grantedBlocks);
+    sciInfo->setTotalGrantedBlocks(totalGrantedBlocks);
+    sciInfo->setDirection(D2D_MULTI);
+    availableRBs_ = sendSciMessage(msg, sciInfo);
+    for (int i=0; i<numSubchannels_; i++)
+    {
+        // Mark all the subchannels as not sensed
+        sensingWindow_[sensingWindowFront_][i]->setSensed(false);
+    }
+
+    lteInfo->setGrantedBlocks(availableRBs_);
+
+    frame = prepareAirFrame(msg, lteInfo);
+
+    emit(tbSent, 1);
+
+    if (lteInfo->getDirection() == D2D_MULTI)
+        sendBroadcast(frame);
+    else
+        sendUnicast(frame);
+
+    counterMessage_ = NULL;
+    sciGrant_ = NULL;
 }
 
 std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo)

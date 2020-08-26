@@ -438,6 +438,11 @@ simple LteMacVUeMode4 extends LteMacNonIPBase
         @statistic[macNodeID](title="Reports Mac NodeID to allow for trans to nodeID"; source="macNodeID"; record=vector);
 }
 
+simple LteMacVUeMode4Counter extends LteMacVUeMode4
+{
+	@class("LteMacVUeMode4Counter");
+}
+
 //
 // eNodeB MAC layer of LTE stack
 //
