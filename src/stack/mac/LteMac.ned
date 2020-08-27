@@ -438,9 +438,9 @@ simple LteMacVUeMode4 extends LteMacNonIPBase
         @statistic[macNodeID](title="Reports Mac NodeID to allow for trans to nodeID"; source="macNodeID"; record=vector);
 }
 
-simple LteMacVUeMode4Counter extends LteMacVUeMode4
+simple LteMacVUeMode4NonSPS extends LteMacVUeMode4
 {
-	@class("LteMacVUeMode4Counter");
+	@class("LteMacVUeMode4NonSPS");
 }
 
 //

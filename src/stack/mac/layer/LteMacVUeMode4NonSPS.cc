@@ -14,7 +14,7 @@
 // 
 
 /**
- * LteMacVUeMode4Counter is a new model which implements the functionality of LTE Mode 4 as per 3GPP release 14
+ * LteMacVUeMode4NonSPS is a new model which implements the functionality of LTE Mode 4 as per 3GPP release 14
  * Author: Brian McCarthy
  * Email: b.mccarthy@cs.ucc.ie
  */
@@ -22,7 +22,7 @@
 #include "stack/mac/buffer/harq/LteHarqBufferRx.h"
 #include "stack/mac/buffer/LteMacQueue.h"
 #include "stack/mac/buffer/harq_d2d/LteHarqBufferRxD2DMirror.h"
-#include "stack/mac/layer/LteMacVUeMode4Counter.h"
+#include "stack/mac/layer/LteMacVUeMode4NonSPS.h"
 #include "stack/mac/scheduler/LteSchedulerUeUl.h"
 #include "stack/phy/packet/SpsCandidateResources.h"
 #include "stack/phy/packet/cbr_m.h"
@@ -36,18 +36,18 @@
 #include "stack/mac/amc/LteMcs.h"
 #include <map>
 
-Define_Module(LteMacVUeMode4Counter);
+Define_Module(LteMacVUeMode4NonSPS);
 
-LteMacVUeMode4Counter::LteMacVUeMode4Counter() :
+LteMacVUeMode4NonSPS::LteMacVUeMode4NonSPS() :
     LteMacVUeMode4()
 {
 }
 
-LteMacVUeMode4Counter::~LteMacVUeMode4Counter()
+LteMacVUeMode4NonSPS::~LteMacVUeMode4NonSPS()
 {
 }
 
-void LteMacVUeMode4Counter::initialize(int stage)
+void LteMacVUeMode4NonSPS::initialize(int stage)
 {
     LteMacVUeMode4::initialize(stage);
 
@@ -57,7 +57,7 @@ void LteMacVUeMode4Counter::initialize(int stage)
     }
 }
 
-void LteMacVUeMode4Counter::handleMessage(cMessage *msg)
+void LteMacVUeMode4NonSPS::handleMessage(cMessage *msg)
 {
     if (msg->isSelfMessage())
     {
@@ -73,7 +73,7 @@ void LteMacVUeMode4Counter::handleMessage(cMessage *msg)
         if (strcmp(pkt->getName(), "CSRs") == 0)
         {
             // This should not happen in this case
-            throw cRuntimeError("LteMacVUeMode4Counter::HandleMessage - Should not receive CSRs. Aborting");
+            throw cRuntimeError("LteMacVUeMode4NonSPS::HandleMessage - Should not receive CSRs. Aborting");
         }
         else if (strcmp(pkt->getName(), "CBR") == 0)
         {
@@ -123,7 +123,7 @@ void LteMacVUeMode4Counter::handleMessage(cMessage *msg)
 
 
 
-void LteMacVUeMode4Counter::handleSelfMessage() {
+void LteMacVUeMode4NonSPS::handleSelfMessage() {
     EV << "----- UE MAIN LOOP -----" << endl;
 
     // extract pdus from all harqrxbuffers and pass them to unmaker
@@ -141,7 +141,7 @@ void LteMacVUeMode4Counter::handleSelfMessage() {
         }
     }
 
-    EV << NOW << "LteMacVUeMode4Counter::handleSelfMessage " << nodeId_ << " - HARQ process "
+    EV << NOW << "LteMacVUeMode4NonSPS::handleSelfMessage " << nodeId_ << " - HARQ process "
        << (unsigned int) currentHarq_ << endl;
     // updating current HARQ process for next TTI
 
@@ -153,7 +153,7 @@ void LteMacVUeMode4Counter::handleSelfMessage() {
     LteMode4SchedulingGrant *mode4Grant = dynamic_cast<LteMode4SchedulingGrant *>(schedulingGrant_);
 
     if (mode4Grant == NULL) {
-        EV << NOW << " LteMacVUeMode4Counter::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
+        EV << NOW << " LteMacVUeMode4NonSPS::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
 
         // No configured Grant simply continue
     } else if (mode4Grant->getPeriodic() && mode4Grant->getStartTime() <= NOW) {
@@ -204,7 +204,7 @@ void LteMacVUeMode4Counter::handleSelfMessage() {
         }
         EV << "\t " << schedulingGrant_ << endl;
 
-        EV << NOW << " LteMacVUeMode4Counter::handleSelfMessage " << nodeId_ << " entered scheduling" << endl;
+        EV << NOW << " LteMacVUeMode4NonSPS::handleSelfMessage " << nodeId_ << " entered scheduling" << endl;
 
         bool retx = false;
         bool availablePdu = false;
@@ -289,7 +289,7 @@ void LteMacVUeMode4Counter::handleSelfMessage() {
         if (hit->first == cellId_)
             purged += hit->second->purgeCorruptedPdus();
     }
-    EV << NOW << " LteMacVUeMode4Counter::handleSelfMessage Purged " << purged << " PDUS" << endl;
+    EV << NOW << " LteMacVUeMode4NonSPS::handleSelfMessage Purged " << purged << " PDUS" << endl;
 
     if (!requestSdu) {
         // update current harq process id
@@ -299,7 +299,7 @@ void LteMacVUeMode4Counter::handleSelfMessage() {
     EV << "--- END UE MAIN LOOP ---" << endl;
 }
 
-void LteMacVUeMode4Counter::macGenerateSchedulingGrant(double maximumLatency, int priority)
+void LteMacVUeMode4NonSPS::macGenerateSchedulingGrant(double maximumLatency, int priority)
 {
     /**
      * 1. Packet priority
@@ -381,7 +381,7 @@ void LteMacVUeMode4Counter::macGenerateSchedulingGrant(double maximumLatency, in
     schedulingGrant_ = mode4Grant;
 }
 
-void LteMacVUeMode4Counter::flushHarqBuffers()
+void LteMacVUeMode4NonSPS::flushHarqBuffers()
 {
     // send the selected units to lower layers
     // First make sure packets are sent down
@@ -644,7 +644,7 @@ void LteMacVUeMode4Counter::flushHarqBuffers()
     }
 }
 
-void LteMacVUeMode4Counter::finish()
+void LteMacVUeMode4NonSPS::finish()
 {
     binder_->removeUeInfo(ueInfo_);
 

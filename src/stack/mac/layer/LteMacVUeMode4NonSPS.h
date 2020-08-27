@@ -16,8 +16,8 @@
 // Author: Brian McCarthy
 // email : b.mccarthy@cs.ucc.ie
 
-#ifndef _LTE_LTEMACVUEMODE4COUNTER_H_
-#define _LTE_LTEMACVUEMODE4COUNTER_H_
+#ifndef _LTE_LTEMACVUEMODE4NONSPS_H_
+#define _LTE_LTEMACVUEMODE4NONSPS_H_
 
 #include "stack/mac/layer/LteMacVUeMode4.h"
 #include "corenetwork/deployer/LteDeployer.h"
@@ -25,7 +25,7 @@
 
 //class LteMode4SchedulingGrant;
 
-class LteMacVUeMode4Counter: public LteMacVUeMode4 {
+class LteMacVUeMode4NonSPS: public LteMacVUeMode4 {
 
 protected:
 
@@ -59,8 +59,8 @@ protected:
     void finish();
 
 public:
-    LteMacVUeMode4Counter();
-    virtual ~LteMacVUeMode4Counter();
+    LteMacVUeMode4NonSPS();
+    virtual ~LteMacVUeMode4NonSPS();
 
     virtual bool isD2DCapable()
     {
@@ -68,4 +68,4 @@ public:
     }
 };
 
-#endif /* _LTE_LTEMACVUEMODE4COUNTER_H_ */
+#endif /* _LTE_LTEMACVUEMODE4NONSPS_H_ */
