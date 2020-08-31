@@ -22,5 +22,6 @@ packet SidelinkControlInformation {
     unsigned int frequencyResourceLocation;
     unsigned int timeGapRetrans;
     unsigned int mcs;
+    unsigned int oneShotLocation;
     unsigned int retransmissionIndex;
 }

@@ -1084,6 +1084,7 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
     LteMode4SchedulingGrant* mode4Grant = new LteMode4SchedulingGrant("LteMode4Grant");
 
     // Priority is the most difficult part to figure out, for the moment I will assign it as a fixed value
+    mode4Grant -> setStartTime(NOW + 1000); // Just forces start time into future so we don't accidentally trigger it early
     mode4Grant -> setSpsPriority(priority);
     mode4Grant -> setPeriod(resourceReservationInterval_ * 100);
     mode4Grant -> setMaximumLatency(maximumLatency);

@@ -35,6 +35,17 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
 
     bool transmitting_;
     bool randomScheduling_;
+    bool oneShotMechanism_;
+    bool oneShotSensing_;
+
+    std::unordered_map<int, std::set<int>> oneShotCSRs_;
+
+    int oneShotT2_;
+    int oneShotT3_;
+    int oneShotSubchannel_;
+    simtime_t oneShotSignalTime_;
+    simtime_t oneShotStartTime_;
+    cMessage* sendOneShotSignal_;
 
     bool rssiFiltering_;
     bool rsrpFiltering_;
@@ -139,6 +150,12 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     // Generate an SCI message corresponding to a Grant
     virtual SidelinkControlInformation* createSCIMessage();
 
+    virtual RbMap sendSciMessage(cMessage* sci, UserControlInfo* lteInfo);
+
+    virtual SidelinkControlInformation* createOneShotSCIMessage(int subframe, int subchannelIndex);
+
+    virtual void sendOneShotMessage(UserControlInfo* lteInfo, int subframe, int subchannelIndex);
+
     // Compute Candidate Single Subframe Resources which the MAC layer can use for transmission
     virtual void computeCSRs(LteMode4SchedulingGrant* &grant);
 
@@ -153,8 +170,6 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     virtual std::tuple<int,int> decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo);
 
     virtual void updateCBR();
-
-    virtual RbMap sendSciMessage(cMessage* sci, UserControlInfo* lteInfo);
 
     virtual void initialiseSensingWindow();
 

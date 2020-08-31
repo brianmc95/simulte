@@ -48,6 +48,10 @@ void LtePhyVUeMode4::initialize(int stage)
         selectionWindowStartingSubframe_ = par("selectionWindowStartingSubframe");
         numSubchannels_ = par("numSubchannels");
         subchannelSize_ = par("subchannelSize");
+        oneShotMechanism_ = par("oneShotMechanism");
+        oneShotT2_ = par("oneShotT2");
+        oneShotT3_ = par("oneShotT3");
+        oneShotSensing_ = false;
         d2dDecodingTimer_ = NULL;
         transmitting_ = false;
         rssiFiltering_ = par("rssiFiltering");
@@ -306,6 +310,101 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
         }
         delete msg;
     }
+    else if (msg->isName("oneShotTimer"))
+    {
+        // This is the sort of stuff required for sending the SCI before it is sent
+        // This information has to be made available to the SCI before sending it down.
+
+        // Most likely at this point we will select the resource and generate MOST of the below
+
+        // Then when transmission of the signal goes you select one of the frees send it up
+        // But you translate it first.
+
+        oneShotSubchannel_; // This is important here which is good to know.
+
+        int finalSubchannel = oneShotSubchannel_ + 1;
+
+        // Determine the RBs on which we will send our message
+        RbMap grantedBlocks;
+        int totalGrantedBlocks = 0;
+        if (adjacencyPSCCHPSSCH_){
+            // Adjacent mode just provide the allocated bands
+
+            for (int i=oneShotSubchannel_;i<finalSubchannel;i++)
+            {
+                int initialBand = i * subchannelSize_;
+                for (Band b = initialBand; b < initialBand + subchannelSize_ ; b++)
+                {
+                    grantedBlocks[MACRO][b] = 1;
+                    ++totalGrantedBlocks;
+                }
+            }
+        } else {
+            // Start at subchannel numsubchannels.
+            // Remove 1 subchannel from each grant.
+            // Account for the two blocks taken for the SCI
+            int initialBand;
+            if (oneShotSubchannel_ == 0){
+                // If first subchannel to use need to make sure to add the number of subchannels for the SCI messages
+                initialBand = numSubchannels_ * 2;
+            } else {
+                initialBand = (numSubchannels_ * 2) + (oneShotSubchannel_ * (subchannelSize_ - 2));
+            }
+            for (Band b = initialBand; b < initialBand + (subchannelSize_ * 1) ; b++) {
+                grantedBlocks[MACRO][b] = 1;
+                ++totalGrantedBlocks;
+            }
+        }
+
+        UserControlInfo* uinfo = new UserControlInfo();
+        uinfo->setSourceId(nodeId_);
+        uinfo->setDestId(nodeId_);
+        uinfo->setFrameType(GRANTPKT);
+        uinfo->setTxNumber(1);
+        uinfo->setGrantedBlocks(grantedBlocks);
+        uinfo->setTotalGrantedBlocks(2);
+        uinfo->setDirection(D2D_MULTI);
+
+        // Subframe Index has to be translated correctly the subchannel is less of an issue.
+        int breakOut = 100;
+        int selectedSubframe = intuniform(1000 + oneShotT2_, 1100, 1);
+        while (oneShotCSRs_.find(selectedSubframe) == oneShotCSRs_.end() & breakOut > 0){
+            selectedSubframe = intuniform(1000 + oneShotT2_, 1100, 1);
+            breakOut--;
+        }
+
+        auto it = std::begin(oneShotCSRs_[selectedSubframe]);
+        // 'advance' the iterator n times
+        int n = intuniform(0, oneShotCSRs_[selectedSubframe].size() - 1, 1);
+        std::advance(it,n);
+        int selectedSubchannel = *it;
+
+        int sensingWindowLength = pStep_ * 10;
+        if (sensingWindowSizeOverride_ > 0){
+            sensingWindowLength = sensingWindowSizeOverride_;
+        }
+
+        simtime_t elapsed_time = NOW - oneShotStartTime_;
+
+        double elapsed_ms = elapsed_time.dbl() * 1000;
+
+        selectedSubframe = selectedSubframe - elapsed_ms - 1000;
+
+        sendOneShotMessage(uinfo, selectedSubframe, selectedSubchannel);
+
+        std::vector<std::tuple<double, int, int>> orderedCSRs;
+
+        orderedCSRs.push_back(std::make_tuple(-std::numeric_limits<double>::infinity(), selectedSubframe, selectedSubchannel));
+
+        // Send the packet up to the MAC layer where it will choose the CSR and the retransmission if that is specified
+        // Need to generate the message that is to be sent to the upper layers.
+        SpsCandidateResources* candidateResourcesMessage = new SpsCandidateResources("CSRs");
+        candidateResourcesMessage->setCSRs(orderedCSRs);
+        send(candidateResourcesMessage, upperGateOut_);
+
+        delete msg;
+        return;
+    }
     else
         LtePhyUe::handleSelfMessage(msg);
 }
@@ -387,7 +486,7 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
                 computeCSRs(grant);
             }
             delete lteInfo;
-            delete grant;
+//            delete grant;
         }
         else
         {
@@ -429,6 +528,110 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
         sendBroadcast(frame);
     else
         sendUnicast(frame);
+}
+
+void LtePhyVUeMode4::sendOneShotMessage(UserControlInfo* lteInfo, int subframe, int subchannelIndex)
+{
+    RbMap rbMap = lteInfo->getGrantedBlocks();
+    UserControlInfo* SCIInfo = lteInfo->dup();
+    LteAirFrame* frame = NULL;
+
+    RbMap sciRbs;
+    RbMap allRbs = rbMap;
+    if (adjacencyPSCCHPSSCH_)
+    {
+        // Adjacent mode
+
+        // Setup so SCI gets 2 RBs from the grantedBlocks.
+        RbMap::iterator it;
+        std::map<Band, unsigned int>::iterator jt;
+        //for each Remote unit used to transmit the packet
+        int allocatedBlocks = 0;
+        for (it = rbMap.begin(); it != rbMap.end(); ++it)
+        {
+            if (allocatedBlocks == 2)
+            {
+                break;
+            }
+            //for each logical band used to transmit the packet
+            for (jt = it->second.begin(); jt != it->second.end(); ++jt)
+            {
+                Band band = jt->first;
+
+                if (allocatedBlocks == 2)
+                {
+                    // Have all the blocks allocated to the SCI so can move on.
+                    break;
+                }
+
+                if (jt->second == 0) // this Rb is not allocated
+                    continue;
+                else
+                {
+                    // RB is allocated to grant, now give it to the SCI.
+                    if (jt->second == 1){
+                        jt->second = 0;
+                        sciRbs[it->first][band] = 1;
+                        ++allocatedBlocks;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        // Non-Adjacent mode
+
+        // Take 2 rbs from the inital RBs available to nodes.
+        int startingRB = subchannelIndex * 2;
+
+        for (Band b = startingRB; b <= startingRB + 1 ; b++)
+        {
+            sciRbs[MACRO][b] = 1;
+            allRbs[MACRO][b] = 1;
+        }
+    }
+
+    // Store the RBs used for transmission. For interference computation
+    UsedRBs info;
+    info.time_ = NOW;
+    info.rbMap_ = allRbs;
+
+    usedRbs_.push_back(info);
+
+    std::vector<UsedRBs>::iterator it = usedRbs_.begin();
+    while (it != usedRbs_.end())  // purge old allocations
+    {
+        if (it->time_ < NOW - 0.002)
+            usedRbs_.erase(it++);
+        else
+            ++it;
+    }
+    lastActive_ = NOW;
+
+    SCIInfo->setFrameType(SCIPKT);
+    SCIInfo->setGrantedBlocks(sciRbs);
+    SCIInfo->setTotalGrantedBlocks(lteInfo->getTotalGrantedBlocks());
+
+    /*
+     * Need to prepare the airframe were sending
+     * Ensure that it will fit into it's grant
+     * if not don't send anything except a break reservation message
+     */
+    EV << NOW << " LtePhyVUeMode4::handleUpperMessage - message from stack" << endl;
+
+    // create LteAirFrame and encapsulate the received packet
+    SidelinkControlInformation* SCI = createOneShotSCIMessage(subframe, subchannelIndex);
+
+    LteAirFrame* sciFrame = prepareAirFrame(SCI, SCIInfo);
+
+    emit(sciSent, 1);
+    emit(subchannelSent, subchannelIndex);
+    emit(subchannelsUsedToSend, 1);
+    sendBroadcast(sciFrame);
+
+    delete lteInfo;
+    delete sciGrant_;
 }
 
 RbMap LtePhyVUeMode4::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
@@ -934,6 +1137,39 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
         optimalCSRs = selectBestRSSIs(possibleCSRs, grant, totalPossibleCSRs);
     } else if (rsrpFiltering_) {
         optimalCSRs = selectBestRSRPs(possibleCSRs, grant, totalPossibleCSRs);
+    } else if (oneShotMechanism_) {
+
+        oneShotCSRs_ = possibleCSRs;
+
+        int breakOut = 100;
+        int selectedSubframe = intuniform(1000, 1000 + oneShotT2_, 1);
+        while (oneShotCSRs_.find(selectedSubframe) == oneShotCSRs_.end() & breakOut > 0){
+            selectedSubframe = intuniform(1000, 1000 + oneShotT2_, 1);
+            breakOut--;
+        }
+
+        auto it = std::begin(oneShotCSRs_[selectedSubframe]);
+        // 'advance' the iterator n times
+        int n = intuniform(0, oneShotCSRs_[selectedSubframe].size(), 1);
+        std::advance(it,n);
+        int selectedSubchannel = *it;
+
+        simtime_t selectedStartTime = (simTime() + SimTime(selectedSubframe - sensingWindowLength, SIMTIME_MS)).trunc(SIMTIME_MS);
+
+        oneShotSubchannel_ = selectedSubchannel;
+
+        sciGrant_ = grant;
+
+        cMessage* sendOneShotSignal_ = new cMessage("oneShotTimer");
+        sendOneShotSignal_->setSchedulingPriority(1);        // Generate the subframe at start of next TTI
+        scheduleAt(selectedStartTime, sendOneShotSignal_);
+        oneShotSignalTime_ = selectedStartTime;
+
+        oneShotStartTime_ = NOW;
+
+        oneShotSensing_ = true;
+
+        return;
     } else {
         // Simply convert the possible CSRs to the correct format and shuffle them and return 20% of them as normal.
         std::vector<std::tuple<double, int, int>> orderedCSRs;
@@ -954,12 +1190,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                 orderedCSRs.push_back(std::make_tuple(-std::numeric_limits<double>::infinity(), transIndex, initialSubchannelIndex));
             }
         }
-        // Shuffle ensures that the subframes and subchannels appear in a random order, making the selections more balanced
-        // throughout the selection window.
-        std::random_shuffle (orderedCSRs.begin(), orderedCSRs.end());
 
-        int minSize = std::round(totalPossibleCSRs * .2);
-        orderedCSRs.resize(minSize);
         optimalCSRs = orderedCSRs;
     }
 
@@ -1264,6 +1495,107 @@ SidelinkControlInformation* LtePhyVUeMode4::createSCIMessage()
     return sci;
 }
 
+SidelinkControlInformation* LtePhyVUeMode4::createOneShotSCIMessage(int subframe, int subchannelIndex)
+{
+    EV << NOW << " LtePhyVUeMode4::createOneShotSCIMessage - Start creating SCI..." << endl;
+
+    SidelinkControlInformation* sci = new SidelinkControlInformation("SCI Message");
+
+    /*
+     * Priority (based on upper layer)
+     * 0-7
+     * Mapping unknown, so possibly just take the priority max and min and map to 0-7
+     * This needs to be integrated from the application layer.
+     * Will take this from the scheduling grant.
+     */
+    sci->setPriority(sciGrant_->getSpsPriority());
+
+    /* Resource Interval
+     *
+     * 0 -> 16
+     * 0 = not reserved
+     * 1 = 100ms (1) RRI [Default]
+     * 2 = 200ms (2) RRI
+     * ...
+     * 10 = 1000ms (10) RRI
+     * 11 = 50ms (0.5) RRI
+     * 12 = 20ms (0.2) RRI
+     * 13 - 15 = Reserved
+     *
+     */
+
+    // This is always 0 for one shot as they don't maintain the grant at all.
+    sci->setResourceReservationInterval(0);
+
+    /* frequency Resource Location
+     * Based on another parameter RIV
+     * but size is
+     * Log2(Nsubchannel(Nsubchannel+1)/2) (rounded up)
+     * 0 - 8 bits
+     * 0 - 256 different values
+     *
+     * Based on TS36.213 14.1.1.4C
+     *     if SubchannelLength -1 < numSubchannels/2
+     *         RIV = numSubchannels(SubchannelLength-1) + subchannelIndex
+     *     else
+     *         RIV = numSubchannels(numSubchannels-SubchannelLength+1) + (numSubchannels-1-subchannelIndex)
+     */
+    unsigned int riv;
+    //
+    if (sciGrant_->getNumSubchannels() -1 <= (numSubchannels_/2))
+    {
+        // RIV calculation for less than half+1
+        riv = ((numSubchannels_ * (sciGrant_->getNumSubchannels() - 1)) + sciGrant_->getStartingSubchannel());
+    }
+    else
+    {
+        // RIV calculation for more than half size
+        riv = ((numSubchannels_ * (numSubchannels_ - sciGrant_->getNumSubchannels() + 1)) + (numSubchannels_ - 1 - sciGrant_->getStartingSubchannel()));
+    }
+
+    sci->setFrequencyResourceLocation(riv);
+
+    /* TimeGapRetrans
+     * 1 - 15
+     * ms from init to retrans
+     */
+
+    // So this is where we need to add the proper time gap between now and the future transmission this is where most logic will be
+    sci->setTimeGapRetrans(subframe);
+
+
+    /* mcs
+     * 5 bits
+     * 26 combos
+     * Technically the MAC layer determines the MCS that it wants the message sent with and as such it will be in the packet
+     */
+    sci->setMcs(sciGrant_->getMcs());
+
+    /* retransmissionIndex
+     * 0 / 1
+     * if 0 retrans is in future/this is the first transmission
+     * if 1 retrans is in the past/this is the retrans
+     */
+    if (sciGrant_->getRetransmission())
+    {
+        sci->setRetransmissionIndex(1);
+    }
+    else
+    {
+        sci->setRetransmissionIndex(0);
+    }
+
+    // Put in the number of the selected subchannel to send on.
+    sci->setOneShotLocation(subchannelIndex);
+
+    /* Filler up to 32 bits
+     * Can just set the length to 32 bits and ignore the issue of adding filler
+     */
+    sci->setBitLength(32);
+
+    return sci;
+}
+
 LteAirFrame* LtePhyVUeMode4::prepareAirFrame(cMessage* msg, UserControlInfo* lteInfo){
     // Helper function to prepare airframe for sending.
     LteAirFrame* frame = new LteAirFrame("airframe");
@@ -1323,32 +1655,6 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
     bool interference_result = false;
     bool prop_result = false;
 
-    RemoteSet r = lteInfo->getUserTxParams()->readAntennaSet();
-    if (r.size() > 1)
-    {
-        // DAS
-        for (RemoteSet::iterator it = r.begin(); it != r.end(); it++)
-        {
-            EV << "LtePhyVUeMode4::decodeAirFrame: Receiving Packet from antenna " << (*it) << "\n";
-
-            /*
-             * On UE set the sender position
-             * and tx power to the sender das antenna
-             */
-
-            // cc->updateHostPosition(myHostRef,das_->getAntennaCoord(*it));
-            // Set position of sender
-            // Move m;
-            // m.setStart(das_->getAntennaCoord(*it));
-            RemoteUnitPhyData data;
-            data.txPower=lteInfo->getTxPower();
-            data.m=getRadioPosition();
-            frame->addRemoteUnitPhyDataVector(data);
-        }
-        // apply analog models For DAS
-        interference_result=channelModel_->errorDas(frame,lteInfo);
-    }
-
     cPacket* pkt = frame->decapsulate();
 
     if(lteInfo->getFrameType() == SCIPKT)
@@ -1400,6 +1706,79 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                         currentSubchannel->setSciSubchannelIndex(subchannelIndex);
                         currentSubchannel->setSciLength(lengthInSubchannels);
                         currentSubchannel->setReserved(true);
+
+                        if (oneShotMechanism_ && oneShotSensing_){
+                            if (sci->getTimeGapRetrans() > 0){
+                                // We need to get this and look at subchannels in T2->T3 which overlap
+                                int ttis_in_future = sci->getTimeGapRetrans();
+                                // setFrequencyResourceLocation will determine the subchannel which will be used for
+                                // future transmissions.
+                                int subchannel_in_future = sci->getOneShotLocation();
+
+                                if (NOW + ttis_in_future == oneShotSignalTime_ && subchannel_in_future == oneShotSubchannel_){
+                                    // Need to defer or decide on having the collision if this is the last subchannel and subframe in t1t2 then send
+                                    // otherwise defer
+                                    int breakOut = 100;
+
+                                    simtime_t elapsed_time = NOW - oneShotStartTime_;
+
+                                    double elapsed_ms = elapsed_time.dbl() * 1000;
+
+                                    elapsed_ms = elapsed_ms + 1000;
+
+                                    if (elapsed_ms < 1000 + oneShotT2_){
+                                        // Can defer this transmission
+
+                                        int selectedSubframe = intuniform(elapsed_ms, 1000 + oneShotT2_, 1);
+                                        while (oneShotCSRs_.find(selectedSubframe) == oneShotCSRs_.end() & breakOut > 0){
+                                            selectedSubframe = intuniform(elapsed_ms, 1000 + oneShotT2_, 1);
+                                            breakOut--;
+                                        }
+
+                                        auto it = std::begin(oneShotCSRs_[selectedSubframe]);
+                                        // 'advance' the iterator n times
+                                        int n = intuniform(0, oneShotCSRs_[selectedSubframe].size(), 1);
+                                        std::advance(it,n);
+                                        int selectedSubchannel = *it;
+
+                                        int sensingWindowLength = pStep_ * 10;
+                                        if (sensingWindowSizeOverride_ > 0){
+                                            sensingWindowLength = sensingWindowSizeOverride_;
+                                        }
+
+                                        simtime_t selectedStartTime = (simTime() + SimTime(selectedSubframe - sensingWindowLength, SIMTIME_MS)-TTI).trunc(SIMTIME_MS);
+
+                                        oneShotSubchannel_ = selectedSubchannel;
+
+                                        cancelEvent(sendOneShotSignal_); // Cancel the previous signal
+
+                                        cMessage* sendOneShotSignal_ = new cMessage("oneShotTimer");
+                                        sendOneShotSignal_->setSchedulingPriority(1);        // Generate the subframe at start of next TTI
+                                        scheduleAt(NOW + selectedStartTime, sendOneShotSignal_);
+                                        oneShotSignalTime_ = NOW + selectedStartTime;
+
+                                        oneShotStartTime_ = NOW;
+
+                                        oneShotSensing_ = true;
+                                    }
+                                } else {
+
+                                    simtime_t elapsed_time = NOW - oneShotStartTime_;
+
+                                    double elapsed_ms = elapsed_time.dbl() * 1000;
+
+                                    int subframe = elapsed_ms + ttis_in_future + 1000;
+
+                                    // Erase the subchannel
+                                    oneShotCSRs_[subframe].erase(subchannel_in_future);
+
+                                    if (oneShotCSRs_[subframe].size() == 0){
+                                        // If the subframe is now empty then erase it also.
+                                        oneShotCSRs_.erase(subframe);
+                                    }
+                                }
+                            }
+                        }
                     }
                     lteInfo->setDeciderResult(true);
                     sciDecoded_ += 1;
