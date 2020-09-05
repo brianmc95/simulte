@@ -74,26 +74,66 @@ void LtePhyVUeMode4::initialize(int stage)
             ThresPSSCHRSRPvector_.push_back(i);
         }
 
-        cbr                         = registerSignal("cbr");
+        // SCI stats
+        sciSent                     = registerSignal("sciSent");
+
         sciReceived                 = registerSignal("sciReceived");
         sciDecoded                  = registerSignal("sciDecoded");
-        sciSent                     = registerSignal("sciSent");
-        tbSent                      = registerSignal("tbSent");
-        tbReceived                  = registerSignal("tbReceived");
-        tbDecoded                   = registerSignal("tbDecoded");
-        tbFailedDueToNoSCI          = registerSignal("tbFailedDueToNoSCI");
-        tbFailedButSCIReceived      = registerSignal("tbFailedButSCIReceived");
-        tbAndSCINotReceived         = registerSignal("tbAndSCINotReceived");
-        threshold                   = registerSignal("threshold");
-        txRxDistanceTB              = registerSignal("txRxDistanceTB");
-        txRxDistanceSCI             = registerSignal("txRxDistanceSCI");
-        sciFailedHalfDuplex         = registerSignal("sciFailedHalfDuplex");
-        tbFailedHalfDuplex          = registerSignal("tbFailedHalfDuplex");
-        tbFailedDueToProp           = registerSignal("tbFailedDueToProp");
-        tbFailedDueToInterference   = registerSignal("tbFailedDueToInterference");
+
         sciFailedDueToProp          = registerSignal("sciFailedDueToProp");
         sciFailedDueToInterference  = registerSignal("sciFailedDueToInterference");
         sciUnsensed                 = registerSignal("sciUnsensed");
+        sciFailedHalfDuplex         = registerSignal("sciFailedHalfDuplex");
+
+        txRxDistanceSCI             = registerSignal("txRxDistanceSCI");
+
+        sciReceived_ = 0;
+        sciDecoded_ = 0;
+
+        sciFailedHalfDuplex_ = 0;
+        sciFailedDueToProp_ = 0;
+        sciFailedDueToInterference_ = 0;
+        sciUnsensed_ = 0;
+
+
+        // TB Stats
+        tbSent                      = registerSignal("tbSent");
+
+        tbReceived                  = registerSignal("tbReceived");
+        tbDecoded                   = registerSignal("tbDecoded");
+
+        tbFailedDueToNoSCI          = registerSignal("tbFailedDueToNoSCI");
+        tbFailedButSCIReceived      = registerSignal("tbFailedButSCIReceived");
+        tbAndSCINotReceived         = registerSignal("tbAndSCINotReceived");
+
+        tbFailedHalfDuplex          = registerSignal("tbFailedHalfDuplex");
+        tbFailedDueToProp           = registerSignal("tbFailedDueToProp");
+        tbFailedDueToInterference   = registerSignal("tbFailedDueToInterference");
+
+        tbFailedDueToPropIgnoreSCI         = registerSignal("tbFailedDueToPropIgnoreSCI");
+        tbFailedDueToInterferenceIgnoreSCI = registerSignal("tbFailedDueToInterferenceIgnoreSCI");
+        tbDecodedIgnoreSCI                 = registerSignal("tbDecodedIgnoreSCI");
+
+        txRxDistanceTB              = registerSignal("txRxDistanceTB");
+
+        tbReceived_ = 0;
+        tbDecoded_ = 0;
+
+        tbFailedDueToNoSCI_ = 0;
+        tbFailedButSCIReceived_ = 0;
+        tbAndSCINotReceived_ = 0;
+        tbFailedHalfDuplex_ = 0;
+        tbFailedDueToProp_ = 0;
+        tbFailedDueToInterference_ = 0;
+        tbFailedDueToPropIgnoreSCI_ = 0;
+        tbFailedDueToInterferenceIgnoreSCI_ = 0;
+        tbDecodedIgnoreSCI_ = 0;
+
+        // General stats
+
+        cbr                         = registerSignal("cbr");
+        threshold                   = registerSignal("threshold");
+
         subchannelReceived          = registerSignal("subchannelReceived");
         subchannelsUsed             = registerSignal("subchannelsUsed");
         senderID                    = registerSignal("senderID");
@@ -103,32 +143,8 @@ void LtePhyVUeMode4::initialize(int stage)
         posX                        = registerSignal("posX");
         posY                        = registerSignal("posY");
 
-        tbFailedDueToPropIgnoreSCI         = registerSignal("tbFailedDueToPropIgnoreSCI");
-        tbFailedDueToInterferenceIgnoreSCI = registerSignal("tbFailedDueToInterferenceIgnoreSCI");
-        tbDecodedIgnoreSCI                 = registerSignal("tbDecodedIgnoreSCI");
-
-        sciReceived_ = 0;
-        sciDecoded_ = 0;
-        sciFailedHalfDuplex_ = 0;
-        tbReceived_ = 0;
-        tbDecoded_ = 0;
-        tbFailedDueToNoSCI_ = 0;
-        tbFailedButSCIReceived_ = 0;
-        tbAndSCINotReceived_ = 0;
-        tbFailedHalfDuplex_ = 0;
         subchannelReceived_ = 0;
         subchannelsUsed_ = 0;
-
-        tbFailedDueToProp_ = 0;
-        tbFailedDueToInterference_ = 0;
-        sciFailedDueToProp_ = 0;
-        sciFailedDueToInterference_ = 0;
-
-        tbFailedDueToPropIgnoreSCI_ = 0;
-        tbFailedDueToInterferenceIgnoreSCI_ = 0;
-        tbDecodedIgnoreSCI_ = 0;
-
-        sciUnsensed_ = 0;
 
         sensingWindowFront_ = 0; // Will ensure when we first update the sensing window we don't skip over the first element
 
@@ -320,7 +336,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
         // Then when transmission of the signal goes you select one of the frees send it up
         // But you translate it first.
 
-        oneShotSubchannel_; // This is important here which is good to know.
+        oneShotSensing_ = false;
 
         int finalSubchannel = oneShotSubchannel_ + 1;
 
@@ -386,7 +402,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
 
         simtime_t elapsed_time = NOW - oneShotStartTime_;
 
-        double elapsed_ms = elapsed_time.dbl() * 1000;
+        int elapsed_ms = elapsed_time.dbl() * 1000;
 
         selectedSubframe = selectedSubframe - elapsed_ms - 1000;
 
@@ -595,7 +611,7 @@ void LtePhyVUeMode4::sendOneShotMessage(UserControlInfo* lteInfo, int subframe, 
     // Store the RBs used for transmission. For interference computation
     UsedRBs info;
     info.time_ = NOW;
-    info.rbMap_ = allRbs;
+    info.rbMap_ = sciRbs; // We are only using these in this situation
 
     usedRbs_.push_back(info);
 
@@ -1142,19 +1158,19 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
         oneShotCSRs_ = possibleCSRs;
 
         int breakOut = 100;
-        int selectedSubframe = intuniform(1000, 1000 + oneShotT2_, 1);
+        int selectedSubframe = intuniform(1002, 1000 + oneShotT2_, 1);
         while (oneShotCSRs_.find(selectedSubframe) == oneShotCSRs_.end() & breakOut > 0){
-            selectedSubframe = intuniform(1000, 1000 + oneShotT2_, 1);
+            selectedSubframe = intuniform(1002, 1000 + oneShotT2_, 1);
             breakOut--;
         }
 
         auto it = std::begin(oneShotCSRs_[selectedSubframe]);
         // 'advance' the iterator n times
-        int n = intuniform(0, oneShotCSRs_[selectedSubframe].size(), 1);
+        int n = intuniform(0, oneShotCSRs_[selectedSubframe].size() - 1, 1);
         std::advance(it,n);
         int selectedSubchannel = *it;
 
-        simtime_t selectedStartTime = (simTime() + SimTime(selectedSubframe - sensingWindowLength, SIMTIME_MS)).trunc(SIMTIME_MS);
+        simtime_t selectedStartTime = (simTime() + SimTime(selectedSubframe - sensingWindowLength, SIMTIME_MS) - TTI).trunc(SIMTIME_MS);
 
         oneShotSubchannel_ = selectedSubchannel;
 
@@ -1722,22 +1738,22 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
 
                                     simtime_t elapsed_time = NOW - oneShotStartTime_;
 
-                                    double elapsed_ms = elapsed_time.dbl() * 1000;
+                                    int elapsed_ms = elapsed_time.dbl() * 1000;
 
                                     elapsed_ms = elapsed_ms + 1000;
 
                                     if (elapsed_ms < 1000 + oneShotT2_){
                                         // Can defer this transmission
 
-                                        int selectedSubframe = intuniform(elapsed_ms, 1000 + oneShotT2_, 1);
+                                        int selectedSubframe = intuniform(elapsed_ms + 1, 1000 + oneShotT2_, 1);
                                         while (oneShotCSRs_.find(selectedSubframe) == oneShotCSRs_.end() & breakOut > 0){
-                                            selectedSubframe = intuniform(elapsed_ms, 1000 + oneShotT2_, 1);
+                                            selectedSubframe = intuniform(elapsed_ms + 1, 1000 + oneShotT2_, 1);
                                             breakOut--;
                                         }
 
                                         auto it = std::begin(oneShotCSRs_[selectedSubframe]);
                                         // 'advance' the iterator n times
-                                        int n = intuniform(0, oneShotCSRs_[selectedSubframe].size(), 1);
+                                        int n = intuniform(0, oneShotCSRs_[selectedSubframe].size() - 1, 1);
                                         std::advance(it,n);
                                         int selectedSubchannel = *it;
 
@@ -1746,7 +1762,7 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                                             sensingWindowLength = sensingWindowSizeOverride_;
                                         }
 
-                                        simtime_t selectedStartTime = (simTime() + SimTime(selectedSubframe - sensingWindowLength, SIMTIME_MS)-TTI).trunc(SIMTIME_MS);
+                                        simtime_t selectedStartTime = (simTime() + SimTime(selectedSubframe - sensingWindowLength, SIMTIME_MS)).trunc(SIMTIME_MS);
 
                                         oneShotSubchannel_ = selectedSubchannel;
 
@@ -1765,16 +1781,18 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
 
                                     simtime_t elapsed_time = NOW - oneShotStartTime_;
 
-                                    double elapsed_ms = elapsed_time.dbl() * 1000;
+                                    int elapsed_ms = elapsed_time.dbl() * 1000;
 
                                     int subframe = elapsed_ms + ttis_in_future + 1000;
 
-                                    // Erase the subchannel
-                                    oneShotCSRs_[subframe].erase(subchannel_in_future);
+                                    if (subframe < 1100) {
+                                        // Erase the subchannel
+                                        oneShotCSRs_[subframe].erase(subchannel_in_future);
 
-                                    if (oneShotCSRs_[subframe].size() == 0){
-                                        // If the subframe is now empty then erase it also.
-                                        oneShotCSRs_.erase(subframe);
+                                        if (subframe < 1100 & oneShotCSRs_[subframe].size() == 0) {
+                                            // If the subframe is now empty then erase it also.
+                                            oneShotCSRs_.erase(subframe);
+                                        }
                                     }
                                 }
                             }

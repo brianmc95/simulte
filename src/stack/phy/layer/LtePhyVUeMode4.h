@@ -72,21 +72,67 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     std::vector<LteAirFrame*> sciFrames_;
     std::vector<cPacket*> scis_;
 
-    simsignal_t cbr;
+    // SCI stats
+    simsignal_t sciSent;
+
     simsignal_t sciReceived;
     simsignal_t sciDecoded;
-    simsignal_t sciSent;
+
+    simsignal_t sciFailedHalfDuplex;
+    simsignal_t sciFailedDueToProp;
+    simsignal_t sciFailedDueToInterference;
+    simsignal_t sciUnsensed;
+
+    simsignal_t txRxDistanceSCI;
+
+    int sciReceived_;
+    int sciDecoded_;
+
+    int sciFailedHalfDuplex_;
+    int sciFailedDueToProp_;
+    int sciFailedDueToInterference_;
+    int sciUnsensed_;
+
+
+    // Tb Stats
     simsignal_t tbSent;
+
     simsignal_t tbReceived;
     simsignal_t tbDecoded;
+
     simsignal_t tbFailedDueToNoSCI;
     simsignal_t tbFailedButSCIReceived;
     simsignal_t tbAndSCINotReceived;
-    simsignal_t sciFailedHalfDuplex;
+
     simsignal_t tbFailedHalfDuplex;
-    simsignal_t threshold;
-    simsignal_t txRxDistanceSCI;
+    simsignal_t tbFailedDueToProp;
+    simsignal_t tbFailedDueToInterference;
+
+    simsignal_t tbFailedDueToPropIgnoreSCI;
+    simsignal_t tbFailedDueToInterferenceIgnoreSCI;
+    simsignal_t tbDecodedIgnoreSCI;
+
     simsignal_t txRxDistanceTB;
+
+    int tbReceived_;
+    int tbDecoded_;
+    int tbFailedDueToNoSCI_;
+    int tbFailedButSCIReceived_;
+    int tbAndSCINotReceived_;
+    int tbFailedHalfDuplex_;
+
+    int tbFailedDueToProp_;
+    int tbFailedDueToInterference_;
+
+
+    int tbFailedDueToPropIgnoreSCI_;
+    int tbFailedDueToInterferenceIgnoreSCI_;
+    int tbDecodedIgnoreSCI_;
+
+
+    // General stats
+    simsignal_t cbr;
+    simsignal_t threshold;
     simsignal_t subchannelReceived;
     simsignal_t subchannelsUsed;
     simsignal_t senderID;
@@ -96,38 +142,8 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     simsignal_t posX;
     simsignal_t posY;
 
-    simsignal_t tbFailedDueToProp;
-    simsignal_t tbFailedDueToInterference;
-    simsignal_t sciFailedDueToProp;
-    simsignal_t sciFailedDueToInterference;
-    simsignal_t sciUnsensed;
-
-    simsignal_t tbFailedDueToPropIgnoreSCI;
-    simsignal_t tbFailedDueToInterferenceIgnoreSCI;
-    simsignal_t tbDecodedIgnoreSCI;
-
-    int sciReceived_;
-    int sciDecoded_;
-    int sciFailedHalfDuplex_;
-    int tbReceived_;
-    int tbDecoded_;
-    int tbFailedDueToNoSCI_;
-    int tbFailedButSCIReceived_;
-    int tbAndSCINotReceived_;
-    int tbFailedHalfDuplex_;
     int subchannelReceived_;
     int subchannelsUsed_;
-
-    int tbFailedDueToProp_;
-    int tbFailedDueToInterference_;
-    int sciFailedDueToProp_;
-    int sciFailedDueToInterference_;
-
-    int tbFailedDueToPropIgnoreSCI_;
-    int tbFailedDueToInterferenceIgnoreSCI_;
-    int tbDecodedIgnoreSCI_;
-
-    int sciUnsensed_;
 
     RbMap availableRBs_;
 
