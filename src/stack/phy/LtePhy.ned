@@ -92,7 +92,7 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 	    bool rssiFiltering = default(true);
 	    bool rsrpFiltering = default(false);
 	    bool oneShotMechanism = default(false);
-	    int oneShotT2 = default(25);
+	    int oneShotT2 = default(40);
 	    int oneShotT3 = default(100);
 	    bool randomScheduling = default(false);
 	    int pStep = default(100);
@@ -105,47 +105,20 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 
 	    @signal[cbr];
  		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
+
+ 		@signal[threshold];
+        @statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
+
+ 		@signal[sciSent];
+        @statistic[sciSent](title="Number of sci sent"; source="sciSent"; record=sum,vector);
+
  		@signal[sciReceived];
 		@statistic[sciReceived](title="Number of received sci"; source="sciReceived"; record=sum,vector);
 		@signal[sciDecoded];
 		@statistic[sciDecoded](title="Number of sci successfully decoded"; source="sciDecoded"; record=sum,vector);
-		@signal[sciNotDecoded];
-        @statistic[sciNotDecoded](title="Number of sci successfully decoded"; source="sciNotDecoded"; record=sum,vector);
-
-		@signal[sciSent];
-		@statistic[sciSent](title="Number of sci sent"; source="sciSent"; record=sum,vector);
-		@signal[tbSent];
-		@statistic[tbSent](title="Number of tb sent"; source="tbSent"; record=sum,vector);
-		@signal[subchannelSent];
-		@statistic[subchannelSent](title="starting Subchannel used for sent message"; source="subchannelSent"; record=sum,vector);
-		@signal[subchannelsUsedToSend];
-		@statistic[subchannelsUsedToSend](title="Number of subchannels used for message"; source="subchannelsUsedToSend"; record=sum,vector);
-
-		@signal[tbReceived];
-		@statistic[tbReceived](title="Number of tb received"; source="tbReceived"; record=sum,vector);
-		@signal[tbDecoded];
-		@statistic[tbDecoded](title="Number of tb Decoded"; source="tbDecoded"; record=sum,vector);
-		@signal[tbFailedDueToNoSCI];
-		@statistic[tbFailedDueToNoSCI](title="Number of tb not decoded due to no SCI"; source="tbFailedDueToNoSCI"; record=sum,vector);
-		@signal[tbFailedButSCIReceived];
-		@statistic[tbFailedButSCIReceived](title="Number of failed TBs with a decoded SCI"; source="tbFailedButSCIReceived"; record=sum,vector);
-		@signal[tbAndSCINotReceived];
-		@statistic[tbAndSCINotReceived](title="Number of failed TBs with a failed SCI"; source="tbAndSCINotReceived"; record=sum,vector);
-		@signal[threshold];
-		@statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
-
-		@signal[senderID];
-		@statistic[senderID](title="ID of node who sent message"; source="senderID"; record=vector);
 
         @signal[sciFailedHalfDuplex];
         @statistic[sciFailedHalfDuplex](title="Number of failed SCIs due to Half Duplex"; source="sciFailedHalfDuplex"; record=sum,vector);
-        @signal[tbFailedHalfDuplex];
-        @statistic[tbFailedHalfDuplex](title="Number of failed TBs due to Half Duplex"; source="tbFailedHalfDuplex"; record=sum,vector);
-
-        @signal[tbFailedDueToProp];
-        @statistic[tbFailedDueToProp](title="Number of failed TBs due to propogation"; source="tbFailedDueToProp"; record=sum,vector);
-        @signal[tbFailedDueToInterference];
-        @statistic[tbFailedDueToInterference](title="Number of failed TBs due to interference"; source="tbFailedDueToInterference"; record=sum,vector);
         @signal[sciFailedDueToProp];
         @statistic[sciFailedDueToProp](title="Number of failed SCIs due to propogation"; source="sciFailedDueToProp"; record=sum,vector);
         @signal[sciFailedDueToInterference];
@@ -154,29 +127,84 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
         @signal[sciUnsensed];
         @statistic[sciUnsensed](title="Number of failed SCIs due to RSRP below threshold"; source="sciUnsensed"; record=sum,vector);
 
-		@signal[txRxDistanceSCI];
-		@statistic[txRxDistanceSCI](title="Distance between transmitter and receiver"; source="txRxDistanceSCI"; record=mean,vector);
-		@signal[txRxDistanceTB];
+        @signal[txRxDistanceSCI];
+        @statistic[txRxDistanceSCI](title="Distance between transmitter and receiver"; source="txRxDistanceSCI"; record=mean,vector);
+
+
+        @signal[oneShotSent];
+        @statistic[oneShotSent](title="Number of oneShot sent"; source="oneShotSent"; record=sum,vector);
+
+        @signal[oneShotReceived];
+        @statistic[oneShotReceived](title="Number of received oneShot"; source="oneShotReceived"; record=sum,vector);
+        @signal[oneShotDecoded];
+        @statistic[oneShotDecoded](title="Number of oneShot successfully decoded"; source="oneShotDecoded"; record=sum,vector);
+
+        @signal[oneShotFailedHalfDuplex];
+        @statistic[oneShotFailedHalfDuplex](title="Number of failed SCIs due to Half Duplex"; source="oneShotFailedHalfDuplex"; record=sum,vector);
+        @signal[oneShotFailedDueToProp];
+        @statistic[oneShotFailedDueToProp](title="Number of failed SCIs due to propogation"; source="oneShotFailedDueToProp"; record=sum,vector);
+        @signal[oneShotFailedDueToInterference];
+        @statistic[oneShotFailedDueToInterference](title="Number of failed SCIs due to interference"; source="oneShotFailedDueToInterference"; record=sum,vector);
+
+        @signal[oneShotUnsensed];
+        @statistic[oneShotUnsensed](title="Number of failed SCIs due to RSRP below threshold"; source="oneShotUnsensed"; record=sum,vector);
+
+        @signal[txRxDistanceOneShot];
+        @statistic[txRxDistanceOneShot](title="Distance between transmitter and receiver"; source="txRxDistanceOneShot"; record=mean,vector);
+
+		@signal[tbSent];
+		@statistic[tbSent](title="Number of tb sent"; source="tbSent"; record=sum,vector);
+
+		@signal[tbReceived];
+		@statistic[tbReceived](title="Number of tb received"; source="tbReceived"; record=sum,vector);
+		@signal[tbDecoded];
+		@statistic[tbDecoded](title="Number of tb Decoded"; source="tbDecoded"; record=sum,vector);
+
+		@signal[tbFailedDueToNoSCI];
+		@statistic[tbFailedDueToNoSCI](title="Number of tb not decoded due to no SCI"; source="tbFailedDueToNoSCI"; record=sum,vector);
+		@signal[tbFailedButSCIReceived];
+		@statistic[tbFailedButSCIReceived](title="Number of failed TBs with a decoded SCI"; source="tbFailedButSCIReceived"; record=sum,vector);
+		@signal[tbAndSCINotReceived];
+		@statistic[tbAndSCINotReceived](title="Number of failed TBs with a failed SCI"; source="tbAndSCINotReceived"; record=sum,vector);
+
+		@signal[tbFailedHalfDuplex];
+        @statistic[tbFailedHalfDuplex](title="Number of failed TBs due to Half Duplex"; source="tbFailedHalfDuplex"; record=sum,vector);
+        @signal[tbFailedDueToProp];
+        @statistic[tbFailedDueToProp](title="Number of failed TBs due to propogation"; source="tbFailedDueToProp"; record=sum,vector);
+        @signal[tbFailedDueToInterference];
+        @statistic[tbFailedDueToInterference](title="Number of failed TBs due to interference"; source="tbFailedDueToInterference"; record=sum,vector);
+
+		@signal[tbFailedDueToPropIgnoreSCI];
+        @statistic[tbFailedDueToPropIgnoreSCI](title="Number of failed TBs due to propogation"; source="tbFailedDueToPropIgnoreSCI"; record=sum,vector);
+        @signal[tbFailedDueToInterferenceIgnoreSCI];
+        @statistic[tbFailedDueToInterferenceIgnoreSCI](title="Number of failed TBs due to interference"; source="tbFailedDueToInterferenceIgnoreSCI"; record=sum,vector);
+        @signal[tbDecodedIgnoreSCI];
+        @statistic[tbDecodedIgnoreSCI](title="Number of failed TBs due to interference"; source="tbDecodedIgnoreSCI"; record=sum,vector);
+
+        @signal[txRxDistanceTB];
         @statistic[txRxDistanceTB](title="Distance between transmitter and receiver"; source="txRxDistanceTB"; record=mean,vector);
+
+
+        @signal[senderID];
+		@statistic[senderID](title="ID of node who sent message"; source="senderID"; record=vector);
 
         @signal[subchannelReceived];
         @statistic[subchannelReceived](title="Initial Subchannel on which packet is received"; source="subchannelReceived"; record=mean,vector);
         @signal[subchannelsUsed];
         @statistic[subchannelsUsed](title="Number of Subchannels used for the received packet"; source="subchannelsUsed"; record=mean, vector);
 
+        @signal[subchannelSent];
+        @statistic[subchannelSent](title="starting Subchannel used for sent message"; source="subchannelSent"; record=sum,vector);
+        @signal[subchannelsUsedToSend];
+        @statistic[subchannelsUsedToSend](title="Number of subchannels used for message"; source="subchannelsUsedToSend"; record=sum,vector);
+
         @signal[interPacketDelay];
         @statistic[interPacketDelay](title="Delay between packet receptions from a node"; source="interPacketDelay"; record=mean,vector);
+
         @signal[posX];
         @statistic[posX](title="X position of node (at reception time)"; source="posX"; record=mean, vector);
         @signal[posY];
         @statistic[posY](title="Y position of node (at reception time)"; source="posY"; record=mean, vector);
-
-        @signal[tbFailedDueToPropIgnoreSCI];
-        @statistic[tbFailedDueToPropIgnoreSCI](title="Number of failed TBs due to propogation"; source="tbFailedDueToPropIgnoreSCI"; record=sum,vector);
-        @signal[tbFailedDueToInterferenceIgnoreSCI];
-        @statistic[tbFailedDueToInterferenceIgnoreSCI](title="Number of failed TBs due to interference"; source="tbFailedDueToInterferenceIgnoreSCI"; record=sum,vector);
-        @signal[tbDecodedIgnoreSCI];
-        @statistic[tbDecodedIgnoreSCI](title="Number of failed TBs due to interference"; source="tbDecodedIgnoreSCI"; record=sum,vector);
 }
 
 // 

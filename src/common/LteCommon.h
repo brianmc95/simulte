@@ -465,6 +465,7 @@ enum LtePhyFrameType
     RACPKT,
     D2DMODESWITCHPKT,
     SCIPKT,
+    RESPKT,
     UNKNOWN_TYPE
 };
 
@@ -482,6 +483,7 @@ const LtePhyFrameTable phytypes[] = {
     ELEM(GRANTPKT),
     ELEM(D2DMODESWITCHPKT),
     ELEM(SCIPKT),
+    ELEM(RESPKT),
     ELEM(UNKNOWN_TYPE)
 };
 

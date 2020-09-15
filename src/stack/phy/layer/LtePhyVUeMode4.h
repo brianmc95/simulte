@@ -72,6 +72,29 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     std::vector<LteAirFrame*> sciFrames_;
     std::vector<cPacket*> scis_;
 
+    std::vector<std::vector<double>> oneShotRsrpVectors_;
+    std::vector<std::vector<double>> oneShotRssiVectors_;
+    std::vector<std::vector<double>> oneShotSinrVectors_;
+    std::vector<double> oneShotAttenuations_;
+    std::vector<LteAirFrame*> oneShotFrames_;
+
+    // One Shot Stats
+
+    simsignal_t oneShotSent;
+    simsignal_t oneShotReceived;
+    simsignal_t oneShotDecoded;
+    simsignal_t oneShotFailedHalfDuplex;
+    simsignal_t oneShotFailedDueToProp;
+    simsignal_t oneShotFailedDueToInterference;
+    simsignal_t oneShotUnsensed;
+    simsignal_t txRxDistanceOneShot;
+    int oneShotReceived_;
+    int oneShotDecoded_;
+    int oneShotFailedHalfDuplex_;
+    int oneShotFailedDueToProp_;
+    int oneShotFailedDueToInterference_;
+    int oneShotUnsensed_;
+
     // SCI stats
     simsignal_t sciSent;
 
