@@ -230,15 +230,15 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             // decode the selected frame
             decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector, sinrVector, attenuation);
 
-            emit(oneShotReceived, oneShotReceived_);
-            emit(oneShotUnsensed, oneShotUnsensed_);
-            emit(oneShotDecoded, oneShotDecoded_);
-            emit(oneShotFailedDueToProp, oneShotFailedDueToProp_);
-            emit(oneShotFailedDueToInterference, oneShotFailedDueToInterference_);
-            emit(oneShotFailedHalfDuplex, oneShotFailedHalfDuplex_);
-
-            emit(subchannelReceived, subchannelReceived_);
-            emit(subchannelsUsed, subchannelsUsed_);
+//            emit(oneShotReceived, oneShotReceived_);
+//            emit(oneShotUnsensed, oneShotUnsensed_);
+//            emit(oneShotDecoded, oneShotDecoded_);
+//            emit(oneShotFailedDueToProp, oneShotFailedDueToProp_);
+//            emit(oneShotFailedDueToInterference, oneShotFailedDueToInterference_);
+//            emit(oneShotFailedHalfDuplex, oneShotFailedHalfDuplex_);
+//
+//            emit(subchannelReceived, subchannelReceived_);
+//            emit(subchannelsUsed, subchannelsUsed_);
 
             oneShotReceived_                = 0;
             oneShotDecoded_                 = 0;
@@ -467,7 +467,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
 
         int elapsed_ms = elapsed_time.dbl() * 1000;
 
-        selectedSubframe = selectedSubframe - elapsed_ms - sensingWindowLength;
+        selectedSubframe = selectedSubframe - elapsed_ms - sensingWindowLength - 1; // -1 accounts for the transmission time i.e. 1ms
 
         sendOneShotMessage(uinfo, selectedSubframe, selectedSubchannel);
 
@@ -655,9 +655,9 @@ void LtePhyVUeMode4::sendOneShotMessage(UserControlInfo* lteInfo, int subframe, 
 
     LteAirFrame* sciFrame = prepareAirFrame(SCI, SCIInfo);
 
-    emit(oneShotSent, 1);
-    emit(subchannelSent, subchannelIndex);
-    emit(subchannelsUsedToSend, 1);
+//    emit(oneShotSent, 1);
+//    emit(subchannelSent, subchannelIndex);
+//    emit(subchannelsUsedToSend, 1);
     sendBroadcast(sciFrame);
 
     delete lteInfo;

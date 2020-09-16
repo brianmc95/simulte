@@ -2163,7 +2163,7 @@ std::tuple<bool, bool> LteRealisticChannelModel::error_Mode4(LteAirFrame *frame,
     if (averageSnr > binder_->phyPisaData.maxSnr())
         blerSnr = 0;
     else
-    if (lteInfo->getFrameType() == SCIPKT)
+    if (lteInfo->getFrameType() == SCIPKT || lteInfo->getFrameType() == RESPKT)
     {
         // TODO: Make this slightly tidier.
         blerSnr = binder_->phyPisaData.GetPscchBler(binder_->phyPisaData.AWGN, binder_->phyPisaData.SISO, averageSnr);
@@ -2179,7 +2179,7 @@ std::tuple<bool, bool> LteRealisticChannelModel::error_Mode4(LteAirFrame *frame,
     if (averageSinr > binder_->phyPisaData.maxSnr())
         blerSinr = 0;
     else
-    if (lteInfo->getFrameType() == SCIPKT)
+    if (lteInfo->getFrameType() == SCIPKT || lteInfo->getFrameType() == RESPKT)
     {
         // TODO: Make this slightly tidier.
         blerSinr = binder_->phyPisaData.GetPscchBler(binder_->phyPisaData.AWGN, binder_->phyPisaData.SISO, averageSinr);
