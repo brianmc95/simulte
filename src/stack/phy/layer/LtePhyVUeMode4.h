@@ -54,52 +54,24 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
 
     std::vector<int> ThresPSSCHRSRPvector_;
 
-    std::vector<LteAirFrame*> tbFrames_; // airframes received in the current TTI. Only one will be decoded
     cMessage* d2dDecodingTimer_; // timer for triggering decoding at the end of the TTI. Started when the first airframe is received
 
-    std::vector<std::vector<double>> tbRsrpVectors_;
-    std::vector<std::vector<double>> tbRssiVectors_;
-    std::vector<std::vector<double>> tbSinrVectors_;
-    std::vector<double> tbAttenuations_;
+    std::vector<std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double>> tbInfo_;
+
+    std::vector<std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double>> sciInfo_;
 
     std::vector<std::vector<Subchannel*>> sensingWindow_;
     int sensingWindowFront_;
     LteMode4SchedulingGrant* sciGrant_;
-    std::vector<std::vector<double>> sciRsrpVectors_;
-    std::vector<std::vector<double>> sciRssiVectors_;
-    std::vector<std::vector<double>> sciSinrVectors_;
-    std::vector<double> sciAttenuations_;
-    std::vector<LteAirFrame*> sciFrames_;
+
     std::vector<cPacket*> scis_;
-
-    std::vector<std::vector<double>> oneShotRsrpVectors_;
-    std::vector<std::vector<double>> oneShotRssiVectors_;
-    std::vector<std::vector<double>> oneShotSinrVectors_;
-    std::vector<double> oneShotAttenuations_;
-    std::vector<LteAirFrame*> oneShotFrames_;
-
-    // One Shot Stats
-
-    simsignal_t oneShotSent;
-    simsignal_t oneShotReceived;
-    simsignal_t oneShotDecoded;
-    simsignal_t oneShotFailedHalfDuplex;
-    simsignal_t oneShotFailedDueToProp;
-    simsignal_t oneShotFailedDueToInterference;
-    simsignal_t oneShotUnsensed;
-    simsignal_t txRxDistanceOneShot;
-    int oneShotReceived_;
-    int oneShotDecoded_;
-    int oneShotFailedHalfDuplex_;
-    int oneShotFailedDueToProp_;
-    int oneShotFailedDueToInterference_;
-    int oneShotUnsensed_;
 
     // SCI stats
     simsignal_t sciSent;
 
     simsignal_t sciReceived;
     simsignal_t sciDecoded;
+    simsignal_t oneShot;
 
     simsignal_t sciFailedHalfDuplex;
     simsignal_t sciFailedDueToProp;
@@ -115,6 +87,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     int sciFailedDueToProp_;
     int sciFailedDueToInterference_;
     int sciUnsensed_;
+    int oneShot_;
 
 
     // Tb Stats

@@ -116,6 +116,8 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 		@statistic[sciReceived](title="Number of received sci"; source="sciReceived"; record=sum,vector);
 		@signal[sciDecoded];
 		@statistic[sciDecoded](title="Number of sci successfully decoded"; source="sciDecoded"; record=sum,vector);
+		@signal[oneShot];
+        @statistic[oneShot](title="oneShot sci"; source="oneShot"; record=sum,vector);
 
         @signal[sciFailedHalfDuplex];
         @statistic[sciFailedHalfDuplex](title="Number of failed SCIs due to Half Duplex"; source="sciFailedHalfDuplex"; record=sum,vector);
@@ -129,28 +131,6 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 
         @signal[txRxDistanceSCI];
         @statistic[txRxDistanceSCI](title="Distance between transmitter and receiver"; source="txRxDistanceSCI"; record=mean,vector);
-
-
-        @signal[oneShotSent];
-        @statistic[oneShotSent](title="Number of oneShot sent"; source="oneShotSent"; record=sum,vector);
-
-        @signal[oneShotReceived];
-        @statistic[oneShotReceived](title="Number of received oneShot"; source="oneShotReceived"; record=sum,vector);
-        @signal[oneShotDecoded];
-        @statistic[oneShotDecoded](title="Number of oneShot successfully decoded"; source="oneShotDecoded"; record=sum,vector);
-
-        @signal[oneShotFailedHalfDuplex];
-        @statistic[oneShotFailedHalfDuplex](title="Number of failed SCIs due to Half Duplex"; source="oneShotFailedHalfDuplex"; record=sum,vector);
-        @signal[oneShotFailedDueToProp];
-        @statistic[oneShotFailedDueToProp](title="Number of failed SCIs due to propogation"; source="oneShotFailedDueToProp"; record=sum,vector);
-        @signal[oneShotFailedDueToInterference];
-        @statistic[oneShotFailedDueToInterference](title="Number of failed SCIs due to interference"; source="oneShotFailedDueToInterference"; record=sum,vector);
-
-        @signal[oneShotUnsensed];
-        @statistic[oneShotUnsensed](title="Number of failed SCIs due to RSRP below threshold"; source="oneShotUnsensed"; record=sum,vector);
-
-        @signal[txRxDistanceOneShot];
-        @statistic[txRxDistanceOneShot](title="Distance between transmitter and receiver"; source="txRxDistanceOneShot"; record=mean,vector);
 
 		@signal[tbSent];
 		@statistic[tbSent](title="Number of tb sent"; source="tbSent"; record=sum,vector);
