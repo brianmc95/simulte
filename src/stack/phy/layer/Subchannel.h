@@ -135,7 +135,21 @@ class Subchannel
                 return -std::numeric_limits<double>::infinity();
             }
         }
-        double getAverageRSSIPssch()
+    double getAverageRSSI()
+    {
+        if (rssiValues.size() != 0){
+            double sum = 0;
+            std::map<Band, double>::iterator it;
+            for(it=rssiValues.begin(); it!=rssiValues.end(); it++)
+            {
+                sum += dBmToLinear(it->second);
+            }
+            return linearToDBm(sum);
+        } else {
+            return - std::numeric_limits<double>::infinity();
+        }
+    }
+        double getAverageRSSIPscch()
         {
             if (rssiValues.size() != 0){
                 int count = 0;
@@ -154,7 +168,7 @@ class Subchannel
                 return - std::numeric_limits<double>::infinity();
             }
         }
-        double getAverageRSRPPssch()
+        double getAverageRSRPPscch()
         {
             if (rsrpValues.size() != 0) {
                 int count = 0;
@@ -170,20 +184,6 @@ class Subchannel
                 return sum / numRbs;
             } else {
                 return -std::numeric_limits<double>::infinity();
-            }
-        }
-        double getAverageRSSI()
-        {
-            if (rssiValues.size() != 0){
-                double sum = 0;
-                std::map<Band, double>::iterator it;
-                for(it=rssiValues.begin(); it!=rssiValues.end(); it++)
-                {
-                    sum += dBmToLinear(it->second);
-                }
-                return linearToDBm(sum);
-            } else {
-                return - std::numeric_limits<double>::infinity();
             }
         }
         void addRsrpValue(double rsrpValue, Band band)
