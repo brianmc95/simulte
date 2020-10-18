@@ -122,7 +122,7 @@ class Subchannel
         {
             return reserved;
         }
-        double getAverageRSRPPssch()
+        double getAverageRSRP()
         {
             if (rsrpValues.size() != 0) {
                 double sum = 0;
@@ -154,7 +154,7 @@ class Subchannel
                 return - std::numeric_limits<double>::infinity();
             }
         }
-        double getAverageRSRP()
+        double getAverageRSRPPssch()
         {
             if (rsrpValues.size() != 0) {
                 int count = 0;
