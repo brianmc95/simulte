@@ -134,6 +134,7 @@ void LtePhyVUeMode4::initialize(int stage)
         // General stats
 
         cbr                         = registerSignal("cbr");
+        cbrPssch                    = registerSignal("cbrPssch");
         threshold                   = registerSignal("threshold");
 
         subchannelReceived          = registerSignal("subchannelReceived");
@@ -172,12 +173,12 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
     {
         std::sort(begin(sciInfo_), end(sciInfo_), [](const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t1,
         const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t2) {
-            return get<5>(t1) < get<5>(t2); // or use a custom compare function
+            return get<5>(t1) > get<5>(t2); // or use a custom compare function
         });
 
         std::sort(begin(tbInfo_), end(tbInfo_), [](const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t1,
         const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t2) {
-            return get<5>(t1) < get<5>(t2); // or use a custom compare function
+            return get<5>(t1) > get<5>(t2); // or use a custom compare function
         });
 
         std::vector<int> missingTbs;
@@ -851,7 +852,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
     int minSubCh = sensingWindowLength - fallBack;
 
     int z = minSubCh;
-    while (z < sensingWindow_.size()) {
+    while (z <= sensingWindow_.size()) {
         // The use of z is to correspond with the notation in the standard see 3GPP TS 36.213 14.1.1.6
 
         int pRsvpTxPrime = pStep_ * pRsvpTx / 100;
@@ -1139,7 +1140,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
         std::advance(it,n);
         int selectedSubchannel = *it;
 
-        simtime_t selectedStartTime = (simTime().trunc(SIMTIME_MS) + SimTime(selectedSubframe - sensingWindowLength, SIMTIME_MS)).trunc(SIMTIME_MS);
+        simtime_t selectedStartTime = (simTime().trunc(SIMTIME_MS) + SimTime(selectedSubframe - sensingWindowLength -1, SIMTIME_MS)).trunc(SIMTIME_MS);
 
         oneShotSubchannel_ = selectedSubchannel;
 
@@ -1651,27 +1652,27 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
     {
         double pkt_dist = getCoord().distance(lteInfo->getCoord());
         emit(txRxDistanceSCI, pkt_dist);
+        oneShot_ = 1;
+
+        SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
+        std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
+        int subchannelIndex = std::get<0>(indexAndLength);
+        int lengthInSubchannels = std::get<1>(indexAndLength);
+
+        subchannelReceived_ = subchannelIndex;
+        subchannelsUsed_ = lengthInSubchannels;
+        emit(senderID, lteInfo->getSourceId());
 
         if (!transmitting_)
         {
 
             sciReceived_ += 1;
-            oneShot_ = 1;
 
             bool notSensed = false;
             double erfParam = (lteInfo->getD2dTxPower() - attenuation - -90.5) / (3 * sqrt(2));
             double erfValue = erf(erfParam);
             double packetSensingRatio = 0.5 * (1 + erfValue);
             double er = dblrand(1);
-
-            SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
-            std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
-            int subchannelIndex = std::get<0>(indexAndLength);
-            int lengthInSubchannels = std::get<1>(indexAndLength);
-
-            subchannelReceived_ = subchannelIndex;
-            subchannelsUsed_ = lengthInSubchannels;
-            emit(senderID, lteInfo->getSourceId());
 
             if (er >= packetSensingRatio){
                 // Packet was not sensed so mark as such and delete it.
@@ -1682,10 +1683,33 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 prop_result = get<0>(res);
                 interference_result = get<1>(res);
 
+                RbMap::iterator mt;
+                std::map<Band, unsigned int>::iterator nt;
+                RbMap usedRbs = lteInfo->getGrantedBlocks();
+                std::vector < Subchannel * > currentSubframe = sensingWindow_[sensingWindowFront_];
+                Subchannel *currentSubchannel = currentSubframe[subchannelIndex];
+                std::vector<Band>::iterator lt;
+                std::vector <Band> allocatedBands = currentSubchannel->getOccupiedBands();
+                for (lt = allocatedBands.begin(); lt != allocatedBands.end(); lt++) {
+                    // Record RSRP and RSSI for this band depending if it was used or not
+                    bool used = false;
+
+                    //for each Remote unit used to transmit the packet
+                    for (mt = usedRbs.begin(); mt != usedRbs.end(); ++mt) {
+                        //for each logical band used to transmit the packet
+                        for (nt = mt->second.begin(); nt != mt->second.end(); ++nt) {
+                            if (nt->first == *lt) {
+                                currentSubchannel->addRsrpValue(rsrpVector[(*lt)], (*lt));
+                                currentSubchannel->addRssiValue(rssiVector[(*lt)], (*lt));
+                                used = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 // Need to ensure that we haven't previously decoded a higher SINR packet.
                 if (interference_result & !sensingWindow_[sensingWindowFront_][subchannelIndex]->getReserved()) {
-
-                    std::vector < Subchannel * > currentSubframe = sensingWindow_[sensingWindowFront_];
                     for (int i = subchannelIndex; i < subchannelIndex + lengthInSubchannels; i++) {
                         Subchannel *currentSubchannel = currentSubframe[i];
                         // Record the SCI info in the subchannel.
@@ -1706,7 +1730,7 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                                 int subframe_in_future =  sci->getTimeGapRetrans();
 
                                 double ttis_in_future = sci->getTimeGapRetrans();
-                                ttis_in_future = ttis_in_future * TTI;
+                                ttis_in_future = (ttis_in_future-1) * TTI;
                                 // setFrequencyResourceLocation will determine the subchannel which will be used for
                                 // future transmissions.
                                 int subchannel_in_future = sci->getOneShotLocation();
@@ -1728,10 +1752,10 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                                     if (elapsed_ms < 1000 + oneShotT2_) {
                                         // Can defer this transmission
 
-                                        int selectedSubframe = intuniform(elapsed_ms + 1, 1000 + oneShotT2_, 1);
+                                        int selectedSubframe = intuniform(elapsed_ms + 2, 1000 + oneShotT2_, 1);
                                         while (oneShotCSRs_.find(selectedSubframe) == oneShotCSRs_.end() &
                                                breakOut > 0) {
-                                            selectedSubframe = intuniform(elapsed_ms + 1, 1000 + oneShotT2_, 1);
+                                            selectedSubframe = intuniform(elapsed_ms + 2, 1000 + oneShotT2_, 1);
                                             breakOut--;
                                         }
 
@@ -1746,7 +1770,7 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                                             sensingWindowLength = sensingWindowSizeOverride_;
                                         }
 
-                                        simtime_t selectedStartTime = (simTime().trunc(SIMTIME_MS) + SimTime(selectedSubframe - sensingWindowLength, SIMTIME_MS)).trunc(SIMTIME_MS);
+                                        simtime_t selectedStartTime = (oneShotStartTime_.trunc(SIMTIME_MS) + SimTime(selectedSubframe - sensingWindowLength - 1, SIMTIME_MS)).trunc(SIMTIME_MS);
 
                                         oneShotSubchannel_ = selectedSubchannel;
 
@@ -1809,6 +1833,15 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
         double pkt_dist = getCoord().distance(lteInfo->getCoord());
         emit(txRxDistanceSCI, pkt_dist);
 
+        SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
+        std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
+        int subchannelIndex = std::get<0>(indexAndLength);
+        int lengthInSubchannels = std::get<1>(indexAndLength);
+
+        subchannelReceived_ = subchannelIndex;
+        subchannelsUsed_ = lengthInSubchannels;
+        emit(senderID, lteInfo->getSourceId());
+
         if (!transmitting_)
         {
 
@@ -1820,15 +1853,6 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
             double erfValue = erf(erfParam);
             double packetSensingRatio = 0.5 * (1 + erfValue);
             double er = dblrand(1);
-
-            SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
-            std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
-            int subchannelIndex = std::get<0>(indexAndLength);
-            int lengthInSubchannels = std::get<1>(indexAndLength);
-
-            subchannelReceived_ = subchannelIndex;
-            subchannelsUsed_ = lengthInSubchannels;
-            emit(senderID, lteInfo->getSourceId());
 
             if (er >= packetSensingRatio){
                 // Packet was not sensed so mark as such and delete it.
@@ -1843,10 +1867,33 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 subchannelsUsed_ = lengthInSubchannels;
                 emit(senderID, lteInfo->getSourceId());
 
+                RbMap::iterator mt;
+                std::map<Band, unsigned int>::iterator nt;
+                RbMap usedRbs = lteInfo->getGrantedBlocks();
+                std::vector < Subchannel * > currentSubframe = sensingWindow_[sensingWindowFront_];
+                Subchannel *currentSubchannel = currentSubframe[subchannelIndex];
+                std::vector<Band>::iterator lt;
+                std::vector <Band> allocatedBands = currentSubchannel->getOccupiedBands();
+                for (lt = allocatedBands.begin(); lt != allocatedBands.end(); lt++) {
+                    // Record RSRP and RSSI for this band depending if it was used or not
+                    bool used = false;
+
+                    //for each Remote unit used to transmit the packet
+                    for (mt = usedRbs.begin(); mt != usedRbs.end(); ++mt) {
+                        //for each logical band used to transmit the packet
+                        for (nt = mt->second.begin(); nt != mt->second.end(); ++nt) {
+                            if (nt->first == *lt) {
+                                currentSubchannel->addRsrpValue(rsrpVector[(*lt)], (*lt));
+                                currentSubchannel->addRssiValue(rssiVector[(*lt)], (*lt));
+                                used = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 // Need to ensure that we haven't previously decoded a higher SINR packet.
                 if (interference_result & !sensingWindow_[sensingWindowFront_][subchannelIndex]->getReserved()) {
-
-                    std::vector < Subchannel * > currentSubframe = sensingWindow_[sensingWindowFront_];
                     for (int i = subchannelIndex; i < subchannelIndex + lengthInSubchannels; i++) {
                         Subchannel *currentSubchannel = currentSubframe[i];
                         // Record the SCI info in the subchannel.
@@ -2090,6 +2137,7 @@ std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* s
 void LtePhyVUeMode4::updateCBR()
 {
     double cbrValue = 0.0;
+    double cbrPsschValue = 0.0;
 
     int cbrIndex = sensingWindowFront_ - 1;
     int cbrCount = 0;
@@ -2113,6 +2161,9 @@ void LtePhyVUeMode4::updateCBR()
                 if ((*it)->getAverageRSSI() > thresholdRSSI_) {
                     cbrValue++;
                 }
+                if ((*it)->getAverageRSSIPssch() > thresholdRSSI_) {
+                    cbrPsschValue++;
+                }
             }
         }
         cbrIndex --;
@@ -2120,8 +2171,10 @@ void LtePhyVUeMode4::updateCBR()
     }
 
     cbrValue = cbrValue / totalSubchannels;
+    cbrPsschValue = cbrPsschValue / totalSubchannels;
 
     emit(cbr, cbrValue);
+    emit(cbrPssch, cbrPsschValue);
 
     Cbr* cbrPkt = new Cbr("CBR");
     cbrPkt->setCbr(cbrValue);

@@ -92,7 +92,7 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 	    bool rssiFiltering = default(true);
 	    bool rsrpFiltering = default(false);
 	    bool oneShotMechanism = default(false);
-	    int oneShotT2 = default(40);
+	    int oneShotT2 = default(25);
 	    int oneShotT3 = default(100);
 	    bool randomScheduling = default(false);
 	    int pStep = default(100);
@@ -105,6 +105,9 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 
 	    @signal[cbr];
  		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
+
+ 		@signal[cbrPssch];
+ 		@statistic[cbrPssch](title="Channel Busy Ratio for PSSCH"; source="cbrPssch"; record=mean,vector);
 
  		@signal[threshold];
         @statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);

@@ -128,6 +128,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
 
     // General stats
     simsignal_t cbr;
+    simsignal_t cbrPssch;
     simsignal_t threshold;
     simsignal_t subchannelReceived;
     simsignal_t subchannelsUsed;
