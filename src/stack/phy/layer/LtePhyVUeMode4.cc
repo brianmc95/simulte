@@ -134,7 +134,7 @@ void LtePhyVUeMode4::initialize(int stage)
         // General stats
 
         cbr                         = registerSignal("cbr");
-        cbrPssch                    = registerSignal("cbrPssch");
+        cbrPscch                    = registerSignal("cbrPscch");
         threshold                   = registerSignal("threshold");
 
         subchannelReceived          = registerSignal("subchannelReceived");
@@ -2137,7 +2137,7 @@ std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* s
 void LtePhyVUeMode4::updateCBR()
 {
     double cbrValue = 0.0;
-    double cbrPsschValue = 0.0;
+    double cbrPscchValue = 0.0;
 
     int cbrIndex = sensingWindowFront_ - 1;
     int cbrCount = 0;
@@ -2161,8 +2161,8 @@ void LtePhyVUeMode4::updateCBR()
                 if ((*it)->getAverageRSSI() > thresholdRSSI_) {
                     cbrValue++;
                 }
-                if ((*it)->getAverageRSSIPssch() > thresholdRSSI_) {
-                    cbrPsschValue++;
+                if ((*it)->getAverageRSSIPscch() > thresholdRSSI_) {
+                    cbrPscchValue++;
                 }
             }
         }
@@ -2171,10 +2171,10 @@ void LtePhyVUeMode4::updateCBR()
     }
 
     cbrValue = cbrValue / totalSubchannels;
-    cbrPsschValue = cbrPsschValue / totalSubchannels;
+    cbrPscchValue = cbrPscchValue / totalSubchannels;
 
     emit(cbr, cbrValue);
-    emit(cbrPssch, cbrPsschValue);
+    emit(cbrPscch, cbrPscchValue);
 
     Cbr* cbrPkt = new Cbr("CBR");
     cbrPkt->setCbr(cbrValue);
