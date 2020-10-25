@@ -41,22 +41,23 @@ void LtePhyVUeMode4::initialize(int stage)
 
     if (stage == inet::INITSTAGE_LOCAL)
     {
-        adjacencyPSCCHPSSCH_ = par("adjacencyPSCCHPSSCH");
-        randomScheduling_ = par("randomScheduling");
-        sensingWindowSizeOverride_ = par("sensingWindowSizeOverride");
-        pStep_ = par("pStep");
+        adjacencyPSCCHPSSCH_             = par("adjacencyPSCCHPSSCH");
+        randomScheduling_                = par("randomScheduling");
+        sensingWindowSizeOverride_       = par("sensingWindowSizeOverride");
+        pStep_                           = par("pStep");
         selectionWindowStartingSubframe_ = par("selectionWindowStartingSubframe");
-        numSubchannels_ = par("numSubchannels");
-        subchannelSize_ = par("subchannelSize");
-        d2dDecodingTimer_ = NULL;
-        transmitting_ = false;
-        rssiFiltering_ = par("rssiFiltering");
-        rsrpFiltering_ = par("rsrpFiltering");
-        counterMechanism_ = par("counterMechanism");
-        counterMax_ = par("counterMaximum");
-        currentCounter_ = -1;
+        numSubchannels_                  = par("numSubchannels");
+        subchannelSize_                  = par("subchannelSize");
+        counterMechanism_                = par("counterMechanism");
+        counterMax_                      = par("counterMaximum");
+        currentCounter_                  = -1;
+        counterTriggered_                = false;
+        d2dDecodingTimer_                = NULL;
+        transmitting_                    = false;
+        rssiFiltering_                   = par("rssiFiltering");
+        rsrpFiltering_                   = par("rsrpFiltering");
 
-        int thresholdRSSI = par("thresholdRSSI");
+        int thresholdRSSI                = par("thresholdRSSI");
 
         thresholdRSSI_ = (-112 + 2 * thresholdRSSI);
 
@@ -73,26 +74,67 @@ void LtePhyVUeMode4::initialize(int stage)
             ThresPSSCHRSRPvector_.push_back(i);
         }
 
-        cbr                         = registerSignal("cbr");
+        // SCI stats
+        sciSent                     = registerSignal("sciSent");
+
         sciReceived                 = registerSignal("sciReceived");
         sciDecoded                  = registerSignal("sciDecoded");
-        sciSent                     = registerSignal("sciSent");
-        tbSent                      = registerSignal("tbSent");
-        tbReceived                  = registerSignal("tbReceived");
-        tbDecoded                   = registerSignal("tbDecoded");
-        tbFailedDueToNoSCI          = registerSignal("tbFailedDueToNoSCI");
-        tbFailedButSCIReceived      = registerSignal("tbFailedButSCIReceived");
-        tbAndSCINotReceived         = registerSignal("tbAndSCINotReceived");
-        threshold                   = registerSignal("threshold");
-        txRxDistanceTB              = registerSignal("txRxDistanceTB");
-        txRxDistanceSCI             = registerSignal("txRxDistanceSCI");
-        sciFailedHalfDuplex         = registerSignal("sciFailedHalfDuplex");
-        tbFailedHalfDuplex          = registerSignal("tbFailedHalfDuplex");
-        tbFailedDueToProp           = registerSignal("tbFailedDueToProp");
-        tbFailedDueToInterference   = registerSignal("tbFailedDueToInterference");
+
         sciFailedDueToProp          = registerSignal("sciFailedDueToProp");
         sciFailedDueToInterference  = registerSignal("sciFailedDueToInterference");
         sciUnsensed                 = registerSignal("sciUnsensed");
+        sciFailedHalfDuplex         = registerSignal("sciFailedHalfDuplex");
+
+        txRxDistanceSCI             = registerSignal("txRxDistanceSCI");
+
+        sciReceived_ = 0;
+        sciDecoded_ = 0;
+
+        sciFailedHalfDuplex_ = 0;
+        sciFailedDueToProp_ = 0;
+        sciFailedDueToInterference_ = 0;
+        sciUnsensed_ = 0;
+
+
+        // TB Stats
+        tbSent                             = registerSignal("tbSent");
+
+        tbReceived                         = registerSignal("tbReceived");
+        tbDecoded                          = registerSignal("tbDecoded");
+
+        tbFailedDueToNoSCI                 = registerSignal("tbFailedDueToNoSCI");
+        tbFailedButSCIReceived             = registerSignal("tbFailedButSCIReceived");
+        tbAndSCINotReceived                = registerSignal("tbAndSCINotReceived");
+
+        tbFailedHalfDuplex                 = registerSignal("tbFailedHalfDuplex");
+        tbFailedDueToProp                  = registerSignal("tbFailedDueToProp");
+        tbFailedDueToInterference          = registerSignal("tbFailedDueToInterference");
+
+        tbFailedDueToPropIgnoreSCI         = registerSignal("tbFailedDueToPropIgnoreSCI");
+        tbFailedDueToInterferenceIgnoreSCI = registerSignal("tbFailedDueToInterferenceIgnoreSCI");
+        tbDecodedIgnoreSCI                 = registerSignal("tbDecodedIgnoreSCI");
+
+        txRxDistanceTB                     = registerSignal("txRxDistanceTB");
+
+        tbReceived_ = 0;
+        tbDecoded_ = 0;
+
+        tbFailedDueToNoSCI_ = 0;
+        tbFailedButSCIReceived_ = 0;
+        tbAndSCINotReceived_ = 0;
+        tbFailedHalfDuplex_ = 0;
+        tbFailedDueToProp_ = 0;
+        tbFailedDueToInterference_ = 0;
+        tbFailedDueToPropIgnoreSCI_ = 0;
+        tbFailedDueToInterferenceIgnoreSCI_ = 0;
+        tbDecodedIgnoreSCI_ = 0;
+
+        // General stats
+
+        cbr                         = registerSignal("cbr");
+        cbrPscch                    = registerSignal("cbrPscch");
+        threshold                   = registerSignal("threshold");
+
         subchannelReceived          = registerSignal("subchannelReceived");
         subchannelsUsed             = registerSignal("subchannelsUsed");
         senderID                    = registerSignal("senderID");
@@ -102,32 +144,8 @@ void LtePhyVUeMode4::initialize(int stage)
         posX                        = registerSignal("posX");
         posY                        = registerSignal("posY");
 
-        tbFailedDueToPropIgnoreSCI         = registerSignal("tbFailedDueToPropIgnoreSCI");
-        tbFailedDueToInterferenceIgnoreSCI = registerSignal("tbFailedDueToInterferenceIgnoreSCI");
-        tbDecodedIgnoreSCI                 = registerSignal("tbDecodedIgnoreSCI");
-
-        sciReceived_ = 0;
-        sciDecoded_ = 0;
-        sciFailedHalfDuplex_ = 0;
-        tbReceived_ = 0;
-        tbDecoded_ = 0;
-        tbFailedDueToNoSCI_ = 0;
-        tbFailedButSCIReceived_ = 0;
-        tbAndSCINotReceived_ = 0;
-        tbFailedHalfDuplex_ = 0;
         subchannelReceived_ = 0;
         subchannelsUsed_ = 0;
-
-        tbFailedDueToProp_ = 0;
-        tbFailedDueToInterference_ = 0;
-        sciFailedDueToProp_ = 0;
-        sciFailedDueToInterference_ = 0;
-
-        tbFailedDueToPropIgnoreSCI_ = 0;
-        tbFailedDueToInterferenceIgnoreSCI_ = 0;
-        tbDecodedIgnoreSCI_ = 0;
-
-        sciUnsensed_ = 0;
 
         sensingWindowFront_ = 0; // Will ensure when we first update the sensing window we don't skip over the first element
 
@@ -151,13 +169,23 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
 {
     if (msg->isName("d2dDecodingTimer"))
     {
+        std::sort(begin(sciInfo_), end(sciInfo_), [](const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t1,
+        const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t2) {
+            return get<5>(t1) > get<5>(t2); // or use a custom compare function
+        });
+
+        std::sort(begin(tbInfo_), end(tbInfo_), [](const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t1,
+        const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t2) {
+            return get<5>(t1) > get<5>(t2); // or use a custom compare function
+        });
+
         std::vector<int> missingTbs;
-        for (int i=0; i<sciFrames_.size(); i++){
+        for (int i=0; i<sciInfo_.size(); i++){
             bool foundTB=false;
-            LteAirFrame* sciFrame = sciFrames_[i];
+            LteAirFrame* sciFrame = get<0>(sciInfo_[i]);
             UserControlInfo* sciInfo = check_and_cast<UserControlInfo*>(sciFrame->removeControlInfo());
-            for (int j=0; j<tbFrames_.size();j++){
-                LteAirFrame* tbFrame = tbFrames_[j];
+            for (int j=0; j<tbInfo_.size();j++){
+                LteAirFrame* tbFrame = get<0>(tbInfo_[j]);
                 UserControlInfo* tbInfo = check_and_cast<UserControlInfo*>(tbFrame->removeControlInfo());
                 if (sciInfo->getSourceId() == tbInfo->getSourceId()){
                     foundTB = true;
@@ -172,20 +200,13 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             sciFrame->setControlInfo(sciInfo);
         }
 
-        while (!sciFrames_.empty()){
+        for (int i=0; i<sciInfo_.size(); i++){
             // Get received SCI and it's corresponding RsrpVector
-            LteAirFrame* frame = sciFrames_.back();
-            std::vector<double> rsrpVector = sciRsrpVectors_.back();
-            std::vector<double> rssiVector = sciRssiVectors_.back();
-            std::vector<double> sinrVector = sciSinrVectors_.back();
-            double attenuation = sciAttenuations_.back();
-
-            // Remove it from the vector
-            sciFrames_.pop_back();
-            sciRsrpVectors_.pop_back();
-            sciRssiVectors_.pop_back();
-            sciSinrVectors_.pop_back();
-            sciAttenuations_.pop_back();
+            LteAirFrame* frame = get<0>(sciInfo_[i]);
+            std::vector<double> rsrpVector = get<1>(sciInfo_[i]);
+            std::vector<double> rssiVector = get<2>(sciInfo_[i]);
+            std::vector<double> sinrVector = get<3>(sciInfo_[i]);
+            double attenuation = get<4>(sciInfo_[i]);
 
             UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(frame->removeControlInfo());
 
@@ -211,7 +232,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             sciUnsensed_ = 0;
         }
         int countTbs = 0;
-        if (tbFrames_.empty()){
+        if (tbInfo_.empty()){
             for(countTbs; countTbs<missingTbs.size(); countTbs++){
                 emit(txRxDistanceTB, -1);
                 emit(tbReceived, -1);
@@ -227,9 +248,9 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbDecodedIgnoreSCI ,-1);
             }
         }
-        while (!tbFrames_.empty())
+        for (int i=0; i<tbInfo_.size(); i++)
         {
-            if(std::find(missingTbs.begin(), missingTbs.end(), countTbs) != missingTbs.end()) {
+            if(std::find(missingTbs.begin(), missingTbs.end(), i) != missingTbs.end()) {
                 // This corresponds to where we are missing a TB, record results as being negative to identify this.
                 emit(txRxDistanceTB, -1);
                 emit(tbReceived, -1);
@@ -244,17 +265,11 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
                 emit(tbDecodedIgnoreSCI ,-1);
             } else {
-                LteAirFrame *frame = tbFrames_.back();
-                std::vector<double> rsrpVector = tbRsrpVectors_.back();
-                std::vector<double> rssiVector = tbRssiVectors_.back();
-                std::vector<double> sinrVector = tbSinrVectors_.back();
-                double attenuation = tbAttenuations_.back();
-
-                tbFrames_.pop_back();
-                tbRsrpVectors_.pop_back();
-                tbRssiVectors_.pop_back();
-                tbSinrVectors_.pop_back();
-                tbAttenuations_.pop_back();
+                LteAirFrame* frame = get<0>(tbInfo_[i]);
+                std::vector<double> rsrpVector = get<1>(tbInfo_[i]);
+                std::vector<double> rssiVector = get<2>(tbInfo_[i]);
+                std::vector<double> sinrVector = get<3>(tbInfo_[i]);
+                double attenuation = get<4>(tbInfo_[i]);
 
                 UserControlInfo *lteInfo = check_and_cast<UserControlInfo *>(frame->removeControlInfo());
 
@@ -285,13 +300,14 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 tbFailedDueToInterferenceIgnoreSCI_ = 0;
                 tbDecodedIgnoreSCI_ = 0;
             }
-            countTbs++;
         }
         std::vector<cPacket*>::iterator it;
         for(it=scis_.begin();it!=scis_.end();it++)
         {
             delete(*it);
         }
+        sciInfo_.clear();
+        tbInfo_.clear();
         scis_.clear();
         delete msg;
         d2dDecodingTimer_ = NULL;
@@ -403,6 +419,7 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
         else
         {
             sciGrant_ = grant;
+            lteInfo->setUserTxParams(sciGrant_->getUserTxParams()->dup());
             lteInfo->setGrantedBlocks(sciGrant_->getGrantedBlocks());
             lteInfo->setTotalGrantedBlocks(sciGrant_->getTotalGrantedBlocks());
             lteInfo->setDirection(D2D_MULTI);
@@ -519,7 +536,7 @@ RbMap LtePhyVUeMode4::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
     std::vector<UsedRBs>::iterator it = usedRbs_.begin();
     while (it != usedRbs_.end())  // purge old allocations
     {
-        if (it->time_ < NOW - 0.002)
+        if (it->time_ < NOW)
             usedRbs_.erase(it++);
         else
             ++it;
@@ -692,7 +709,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
     int minSubCh = sensingWindowLength - fallBack;
 
     int z = minSubCh;
-    while (z < sensingWindow_.size()) {
+    while (z <= sensingWindow_.size()) {
         // The use of z is to correspond with the notation in the standard see 3GPP TS 36.213 14.1.1.6
 
         int pRsvpTxPrime = pStep_ * pRsvpTx / 100;
@@ -710,7 +727,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
              *
              *  y = subframe of possible CSR
              *  j = {0, 1, ... Cresel-1}
-             *  Pstep is the lenght of frames we have e.g. 100ms long frames
+             *  Pstep is the length of frames we have e.g. 100ms long frames
              *  PrsvpTx is the resource reservation interval of transmission e.g. 100
              *  P'rsvpTx = Pstep * PrsvpTx / 100
              *
@@ -910,8 +927,10 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
     for (int i=0; i<notSensedSubframes.size(); i++)
     {
         int subframeIndex = notSensedSubframes[i];
-        // Simply erase this element as an option.
-        possibleCSRs.erase(subframeIndex);
+        if ( possibleCSRs.find(subframeIndex) != possibleCSRs.end() ) {
+            // Simply erase this element as an option.
+            possibleCSRs.erase(subframeIndex);
+        }
     }
 
     // Now need to go through all the threshold breaking CSRs and remove them
@@ -1314,20 +1333,31 @@ void LtePhyVUeMode4::storeAirFrame(LteAirFrame* newFrame)
     std::vector<double> rssiVector = get<0>(rssiSinrVectors);
     std::vector<double> sinrVector = get<1>(rssiSinrVectors);
 
+    int countAssignedRbs = 0;
+    double avgSinr = 0.0;
+    RbMap grantedBlocks = newInfo->getGrantedBlocks();
+
+    RbMap::iterator it;
+    std::map<Band, unsigned int>::iterator jt;
+    //for each Remote unit used to transmit the packet
+    for (it = grantedBlocks.begin(); it != grantedBlocks.end(); ++it) {
+        //for each logical band used to transmit the packet
+        for (jt = it->second.begin(); jt != it->second.end(); ++jt) {
+            //this Rb is not allocated
+            if (jt->second == 0)
+                continue;
+            avgSinr += sinrVector[jt->first];
+            countAssignedRbs++;
+        }
+    }
+
+    avgSinr = avgSinr / countAssignedRbs;
+
     // Need to be able to figure out which subchannel is associated to the Rbs in this case
     if (newInfo->getFrameType() == SCIPKT){
-        sciFrames_.push_back(newFrame);
-        sciRsrpVectors_.push_back(rsrpVector);
-        sciRssiVectors_.push_back(rssiVector);
-        sciSinrVectors_.push_back(sinrVector);
-        sciAttenuations_.push_back(attenuation);
-    }
-    else{
-        tbFrames_.push_back(newFrame);
-        tbRsrpVectors_.push_back(rsrpVector);
-        tbRssiVectors_.push_back(rssiVector);
-        tbSinrVectors_.push_back(sinrVector);
-        tbAttenuations_.push_back(attenuation);
+        sciInfo_.push_back(std::make_tuple(newFrame, rsrpVector, rssiVector, sinrVector, attenuation, avgSinr));
+    }  else{
+        tbInfo_.push_back(std::make_tuple(newFrame, rsrpVector, rssiVector, sinrVector, attenuation, avgSinr));
     }
 }
 
@@ -1345,6 +1375,15 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
     {
         double pkt_dist = getCoord().distance(lteInfo->getCoord());
         emit(txRxDistanceSCI, pkt_dist);
+
+        SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
+        std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
+        int subchannelIndex = std::get<0>(indexAndLength);
+        int lengthInSubchannels = std::get<1>(indexAndLength);
+
+        subchannelReceived_ = subchannelIndex;
+        subchannelsUsed_ = lengthInSubchannels;
+        emit(senderID, lteInfo->getSourceId());
 
         if (!transmitting_)
         {
@@ -1366,18 +1405,33 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 prop_result = get<0>(res);
                 interference_result = get<1>(res);
 
-                SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
-                std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
-                int subchannelIndex = std::get<0>(indexAndLength);
-                int lengthInSubchannels = std::get<1>(indexAndLength);
+                RbMap::iterator mt;
+                std::map<Band, unsigned int>::iterator nt;
+                RbMap usedRbs = lteInfo->getGrantedBlocks();
+                std::vector < Subchannel * > currentSubframe = sensingWindow_[sensingWindowFront_];
+                Subchannel *currentSubchannel = currentSubframe[subchannelIndex];
+                std::vector<Band>::iterator lt;
+                std::vector <Band> allocatedBands = currentSubchannel->getOccupiedBands();
+                for (lt = allocatedBands.begin(); lt != allocatedBands.end(); lt++) {
+                    // Record RSRP and RSSI for this band depending if it was used or not
+                    bool used = false;
 
-                subchannelReceived_ = subchannelIndex;
-                subchannelsUsed_ = lengthInSubchannels;
-                emit(senderID, lteInfo->getSourceId());
+                    //for each Remote unit used to transmit the packet
+                    for (mt = usedRbs.begin(); mt != usedRbs.end(); ++mt) {
+                        //for each logical band used to transmit the packet
+                        for (nt = mt->second.begin(); nt != mt->second.end(); ++nt) {
+                            if (nt->first == *lt) {
+                                currentSubchannel->addRsrpValue(rsrpVector[(*lt)], (*lt));
+                                currentSubchannel->addRssiValue(rssiVector[(*lt)], (*lt));
+                                used = true;
+                                break;
+                            }
+                        }
+                    }
+                }
 
-                if (interference_result) {
-
-                    std::vector < Subchannel * > currentSubframe = sensingWindow_[sensingWindowFront_];
+                // Need to ensure that we haven't previously decoded a higher SINR packet.
+                if (interference_result & !sensingWindow_[sensingWindowFront_][subchannelIndex]->getReserved()) {
                     for (int i = subchannelIndex; i < subchannelIndex + lengthInSubchannels; i++) {
                         Subchannel *currentSubchannel = currentSubframe[i];
                         // Record the SCI info in the subchannel.
@@ -1398,6 +1452,8 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                     sciFailedDueToProp_ += 1;
                 } else {
                     lteInfo->setDeciderResult(false);
+                    // Just ensure the result is recorded as false
+                    interference_result = false;
                     sciFailedDueToInterference_ += 1;
                 }
             }
@@ -1554,9 +1610,10 @@ void LtePhyVUeMode4::counterMechanism()
 {
     // If not started counter
     // Setup counter 0,CW-1
-    if (currentCounter_ == -1){
+    if (currentCounter_ == -1 & !counterTriggered_){
         // Have not setup the counter so time to do so
         currentCounter_ = intuniform(0, counterMax_-1, 2);
+        counterTriggered_ == true;
 
         cMessage* updateSubframe = new cMessage("CounterMessage");
         updateSubframe->setSchedulingPriority(1);        // Check the last subframe at start of the subframe
@@ -1591,16 +1648,40 @@ void LtePhyVUeMode4::counterMechanism()
             // If counter == 0
             // Select a free subchannel (technically based on the usual SPS mechanism but for now just pick @ random as purely
             // aperiodic not mixed
-            int selectedSubchannel = intuniform(0, numSubchannels_-sciGrant_->getNumSubchannels(), 2);
+            int previousSubframe = (sensingWindowFront_ + 1) - (pStep_);
+            if (previousSubframe < 0){
+                // If we are negative we know we must wrap around
+                previousSubframe = (pStep_ * 10) + previousSubframe;
+            }
 
-            counterMechanismSend(selectedSubchannel);
+            std::vector<int> possibleSubchannels;
+            std::vector <Subchannel *> currentSubframe = sensingWindow_[previousSubframe];
+            for (int i = 0; i < currentSubframe.size(); i++) {
+                if (currentSubframe[i]->getSensed()) {
+                    if (!currentSubframe[i]->getReserved()){
+                        // If we sensed and know the subchannel is unreserved then it can be selected
+                        possibleSubchannels.push_back(i);
+                    }
+                }
+            }
 
-            currentCounter_ = -1;
-        } else {
-            cMessage* updateSubframe = new cMessage("CounterMessage");
-            updateSubframe->setSchedulingPriority(1);        // Check the last subframe at start of the subframe
-            scheduleAt(NOW + TTI, updateSubframe);
+            if (possibleSubchannels.size() > 0) {
+                auto it = std::begin(possibleSubchannels);
+                // 'advance' the iterator n times
+                int n = intuniform(0, possibleSubchannels.size() - 1, 1);
+                std::advance(it,n);
+                int selectedSubchannel = *it;
+
+                counterMechanismSend(selectedSubchannel);
+
+                currentCounter_ = -1;
+                counterTriggered_ = false;
+                return;
+            }
         }
+        cMessage* updateSubframe = new cMessage("CounterMessage");
+        updateSubframe->setSchedulingPriority(1);        // Check the last subframe at start of the subframe
+        scheduleAt(NOW + TTI, updateSubframe);
     }
 }
 
@@ -1746,6 +1827,7 @@ std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* s
 void LtePhyVUeMode4::updateCBR()
 {
     double cbrValue = 0.0;
+    double cbrPscchValue = 0.0;
 
     int cbrIndex = sensingWindowFront_ - 1;
     int cbrCount = 0;
@@ -1769,6 +1851,9 @@ void LtePhyVUeMode4::updateCBR()
                 if ((*it)->getAverageRSSI() > thresholdRSSI_) {
                     cbrValue++;
                 }
+                if ((*it)->getAverageRSSIPscch() > thresholdRSSI_) {
+                    cbrPscchValue++;
+                }
             }
         }
         cbrIndex --;
@@ -1776,8 +1861,10 @@ void LtePhyVUeMode4::updateCBR()
     }
 
     cbrValue = cbrValue / totalSubchannels;
+    cbrPscchValue = cbrPscchValue / totalSubchannels;
 
     emit(cbr, cbrValue);
+    emit(cbrPscch, cbrPscchValue);
 
     Cbr* cbrPkt = new Cbr("CBR");
     cbrPkt->setCbr(cbrValue);

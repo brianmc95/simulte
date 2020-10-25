@@ -104,6 +104,15 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 
 	    @signal[cbr];
  		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
+ 		@signal[cbrPscch];
+        @statistic[cbrPscch](title="Channel Busy Ratio for PSCCH"; source="cbrPscch"; record=mean,vector);
+
+ 		@signal[threshold];
+        @statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
+
+ 		@signal[sciSent];
+        @statistic[sciSent](title="Number of sci sent"; source="sciSent"; record=sum,vector);
+
  		@signal[sciReceived];
 		@statistic[sciReceived](title="Number of received sci"; source="sciReceived"; record=sum,vector);
 		@signal[sciDecoded];

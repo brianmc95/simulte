@@ -135,6 +135,43 @@ class Subchannel
                 return - std::numeric_limits<double>::infinity();
             }
         }
+    double getAverageRSSIPscch()
+    {
+        if (rssiValues.size() != 0){
+            int count = 0;
+            double sum = 0;
+            std::map<Band, double>::iterator it;
+            for(it=rssiValues.begin(); it!=rssiValues.end(); it++)
+            {
+                sum += dBmToLinear(it->second);
+                count++;
+                if (count == 2){
+                    break;
+                }
+            }
+            return linearToDBm(sum);
+        } else {
+            return - std::numeric_limits<double>::infinity();
+        }
+    }
+    double getAverageRSRPPscch()
+    {
+        if (rsrpValues.size() != 0) {
+            int count = 0;
+            double sum = 0;
+            std::map<Band, double>::iterator it;
+            for (it = rsrpValues.begin(); it != rsrpValues.end(); it++) {
+                sum += it->second;
+                count++;
+                if (count == 2){
+                    break;
+                }
+            }
+            return sum / numRbs;
+        } else {
+            return -std::numeric_limits<double>::infinity();
+        }
+    }
         void addRsrpValue(double rsrpValue, Band band)
         {
             auto it = rsrpValues.find(band);

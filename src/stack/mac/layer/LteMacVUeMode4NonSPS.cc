@@ -194,6 +194,11 @@ void LteMacVUeMode4NonSPS::handleSelfMessage() {
     {
         if (mode4Grant->getFirstTransmission()) {
             mode4Grant->setFirstTransmission(false);
+            // Need to ensure the grant is correctly broken at this point
+            emit(grantBreak, 1);
+            mode4Grant->setExpiration(0);
+            expiredGrant_ = true;
+
         }
         if (!firstTx) {
             EV << "\t currentHarq_ counter initialized " << endl;
@@ -372,8 +377,6 @@ void LteMacVUeMode4NonSPS::macGenerateSchedulingGrant(double maximumLatency, int
     const unsigned int* tbsVect = itbs2tbs(mod, SINGLE_ANTENNA_PORT0, 1, maxMCSPSSCH_ - i);
     maximumCapacity_ = tbsVect[totalGrantedBlocks-1];
     mode4Grant->setGrantedCwBytes(currentCw_, maximumCapacity_);
-    // Simply flips the codeword.
-    currentCw_ = MAX_CODEWORDS - currentCw_;
 
     periodCounter_= mode4Grant->getPeriod();
     expirationCounter_= (mode4Grant->getResourceReselectionCounter() * periodCounter_) + 1;
