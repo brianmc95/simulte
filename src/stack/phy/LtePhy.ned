@@ -141,6 +141,8 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 		@statistic[tbAndSCINotReceived](title="Number of failed TBs with a failed SCI"; source="tbAndSCINotReceived"; record=sum,vector);
 		@signal[threshold];
 		@statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
+		@signal[periodic];
+		@statistic[periodic](title="Identifies traffic as periodic or aperiodic"; source="periodic"; record=vector);
 
 		@signal[senderID];
 		@statistic[senderID](title="ID of node who sent message"; source="senderID"; record=vector);

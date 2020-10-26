@@ -101,6 +101,7 @@ void LtePhyVUeMode4::initialize(int stage)
 
         tbReceived                         = registerSignal("tbReceived");
         tbDecoded                          = registerSignal("tbDecoded");
+        periodic                           = registerSignal("periodic");
 
         tbFailedDueToNoSCI                 = registerSignal("tbFailedDueToNoSCI");
         tbFailedButSCIReceived             = registerSignal("tbFailedButSCIReceived");
@@ -242,6 +243,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToInterference, -1);
                 emit(tbFailedButSCIReceived, -1);
                 emit(tbFailedHalfDuplex, -1);
+                emit(periodic, -1);
 
                 emit(tbFailedDueToPropIgnoreSCI ,-1);
                 emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
@@ -260,6 +262,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToInterference, -1);
                 emit(tbFailedButSCIReceived, -1);
                 emit(tbFailedHalfDuplex, -1);
+                emit(periodic, -1);
 
                 emit(tbFailedDueToPropIgnoreSCI ,-1);
                 emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
@@ -283,6 +286,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToInterference, tbFailedDueToInterference_);
                 emit(tbFailedButSCIReceived, tbFailedButSCIReceived_);
                 emit(tbFailedHalfDuplex, tbFailedHalfDuplex_);
+                emit(periodic, lteInfo->getPeriodic());
 
                 emit(tbFailedDueToPropIgnoreSCI ,tbFailedDueToPropIgnoreSCI_);
                 emit(tbFailedDueToInterferenceIgnoreSCI ,tbFailedDueToInterferenceIgnoreSCI_);
@@ -1736,6 +1740,7 @@ void LtePhyVUeMode4::counterMechanismSend(int initialSubchannel)
     sciInfo->setGrantedBlocks(grantedBlocks);
     sciInfo->setTotalGrantedBlocks(totalGrantedBlocks);
     sciInfo->setDirection(D2D_MULTI);
+    sciInfo->setPeriodic(false);
     availableRBs_ = sendSciMessage(msg, sciInfo);
     for (int i=0; i<numSubchannels_; i++)
     {
@@ -1744,6 +1749,7 @@ void LtePhyVUeMode4::counterMechanismSend(int initialSubchannel)
     }
 
     lteInfo->setGrantedBlocks(availableRBs_);
+    lteInfo->setPeriodic(false);
 
     frame = prepareAirFrame(msg, lteInfo);
 
