@@ -286,7 +286,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToInterference, tbFailedDueToInterference_);
                 emit(tbFailedButSCIReceived, tbFailedButSCIReceived_);
                 emit(tbFailedHalfDuplex, tbFailedHalfDuplex_);
-                emit(periodic, lteInfo->getPeriodic());
+                emit(periodic, int(lteInfo->getPeriodic()));
 
                 emit(tbFailedDueToPropIgnoreSCI ,tbFailedDueToPropIgnoreSCI_);
                 emit(tbFailedDueToInterferenceIgnoreSCI ,tbFailedDueToInterferenceIgnoreSCI_);
@@ -458,6 +458,8 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
         lteInfo->setGrantedBlocks(availableRBs_);
 
         frame = prepareAirFrame(msg, lteInfo);
+
+        lteInfo->setPeriodic(true);
 
         emit(tbSent, 1);
 
