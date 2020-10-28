@@ -1138,7 +1138,7 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
     if ((randomScheduling_) || (nonPeriodic_) ){
-        mode4Grant -> setResourceReselectionCounter(0);
+        mode4Grant -> setResourceReselectionCounter(5);
         mode4Grant -> setExpiration(0);
         emit(rrcSelected, 0);
     } else {

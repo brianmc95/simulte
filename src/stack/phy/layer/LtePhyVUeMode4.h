@@ -95,6 +95,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
 
     simsignal_t tbReceived;
     simsignal_t tbDecoded;
+    simsignal_t periodic;
 
     simsignal_t tbFailedDueToNoSCI;
     simsignal_t tbFailedButSCIReceived;

@@ -104,6 +104,8 @@ void LtePhyVUeMode4::initialize(int stage)
         tbReceived                         = registerSignal("tbReceived");
         tbDecoded                          = registerSignal("tbDecoded");
 
+        periodic                           = registerSignal("periodic");
+
         tbFailedDueToNoSCI                 = registerSignal("tbFailedDueToNoSCI");
         tbFailedButSCIReceived             = registerSignal("tbFailedButSCIReceived");
         tbAndSCINotReceived                = registerSignal("tbAndSCINotReceived");
@@ -247,6 +249,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToInterference, -1);
                 emit(tbFailedButSCIReceived, -1);
                 emit(tbFailedHalfDuplex, -1);
+                emit(periodic, -1);
 
                 emit(tbFailedDueToPropIgnoreSCI ,-1);
                 emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
@@ -265,6 +268,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToInterference, -1);
                 emit(tbFailedButSCIReceived, -1);
                 emit(tbFailedHalfDuplex, -1);
+                emit(periodic, -1);
 
                 emit(tbFailedDueToPropIgnoreSCI ,-1);
                 emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
@@ -288,6 +292,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToInterference, tbFailedDueToInterference_);
                 emit(tbFailedButSCIReceived, tbFailedButSCIReceived_);
                 emit(tbFailedHalfDuplex, tbFailedHalfDuplex_);
+                emit(periodic, int(lteInfo->getPeriodic()));
 
                 emit(tbFailedDueToPropIgnoreSCI ,tbFailedDueToPropIgnoreSCI_);
                 emit(tbFailedDueToInterferenceIgnoreSCI ,tbFailedDueToInterferenceIgnoreSCI_);
@@ -515,7 +520,9 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
                 computeCSRs(grant);
             }
             delete lteInfo;
-//            delete grant;
+            if (!oneShotMechanism_){
+                delete grant;
+            }
         }
         else
         {
@@ -524,6 +531,11 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
             lteInfo->setGrantedBlocks(sciGrant_->getGrantedBlocks());
             lteInfo->setTotalGrantedBlocks(sciGrant_->getTotalGrantedBlocks());
             lteInfo->setDirection(D2D_MULTI);
+            if (oneShotMechanism_){
+                lteInfo->setPeriodic(false);
+            } else {
+                lteInfo->setPeriodic(true);
+            }
             availableRBs_ = sendSciMessage(msg, lteInfo);
             for (int i=0; i<numSubchannels_; i++)
             {
@@ -549,6 +561,10 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
 
     lteInfo->setGrantedBlocks(availableRBs_);
 
+    if (oneShotMechanism_){
+        lteInfo->setPeriodic(false);
+    }
+
     frame = prepareAirFrame(msg, lteInfo);
 
     emit(tbSent, 1);
@@ -564,6 +580,8 @@ void LtePhyVUeMode4::sendOneShotMessage(UserControlInfo* lteInfo, int subframe, 
     RbMap rbMap = lteInfo->getGrantedBlocks();
     UserControlInfo* SCIInfo = lteInfo->dup();
     LteAirFrame* frame = NULL;
+
+    lteInfo->setPeriodic(false);
 
     // Store the RBs used for transmission. For interference computation
     UsedRBs info;
@@ -896,7 +914,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
 
                 for (int q = 1; q <= Q; q++) {
 
-                    for (int j = 1; j < cResel; j++) {
+                    for (int j = 1; j <= cResel; j++) {
                         int disallowedSubframe = (z + (j * pRsvpTxPrime)) - (pStep_ * q * (*k));
                         // Only mark as disallowed if it corresponds with a frame in the selection window
                         if (disallowedSubframe >= minSelectionIndex && disallowedSubframe <= maxSelectionIndex) {
@@ -971,7 +989,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                                 averageRSRPs.push_back(linearToDBm(totalRSRPLinear/grantLength));
                             }
                             k += grantLength;
-                        } else if (oneShotMechanism_ & sensingWindow_[translatedZ][k]->getTimeGapRetrans() > 0){
+                        } else if (sensingWindow_[translatedZ][k]->getTimeGapRetrans() > 0){
                             int oneShotSubframe = sensingWindow_[translatedZ][k]->getTimeGapRetrans() + z;
                             if (oneShotSubframe > 1000){
                                 // we have a future resource which is reserved and needs to be removed from the possible CSRs

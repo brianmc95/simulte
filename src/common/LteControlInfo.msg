@@ -137,6 +137,7 @@ class UserControlInfo extends LteControlInfo {
 
     int subchannelNumber;
     int subchannelLength;
+    bool periodic;
     simtime_t grantStartTime;
 
     //#

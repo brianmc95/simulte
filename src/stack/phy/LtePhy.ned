@@ -112,6 +112,9 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
  		@signal[threshold];
         @statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
 
+        @signal[periodic];
+        @statistic[periodic](title="Identifies traffic as periodic or aperiodic"; source="periodic"; record=vector);
+
  		@signal[sciSent];
         @statistic[sciSent](title="Number of sci sent"; source="sciSent"; record=sum,vector);
 
