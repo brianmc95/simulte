@@ -563,6 +563,8 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
 
     if (oneShotMechanism_){
         lteInfo->setPeriodic(false);
+    } else {
+        lteInfo->setPeriodic(true);
     }
 
     frame = prepareAirFrame(msg, lteInfo);
