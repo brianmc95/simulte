@@ -172,12 +172,12 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
     {
         std::sort(begin(sciInfo_), end(sciInfo_), [](const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t1,
         const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t2) {
-            return get<5>(t1) > get<5>(t2); // or use a custom compare function
+            return get<5>(t1) < get<5>(t2); // or use a custom compare function
         });
 
         std::sort(begin(tbInfo_), end(tbInfo_), [](const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t1,
         const std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> &t2) {
-            return get<5>(t1) > get<5>(t2); // or use a custom compare function
+            return get<5>(t1) < get<5>(t2); // or use a custom compare function
         });
 
         std::vector<int> missingTbs;
@@ -201,13 +201,16 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             sciFrame->setControlInfo(sciInfo);
         }
 
-        for (int i=0; i<sciInfo_.size(); i++){
+        while (!sciInfo_.empty()){
+            std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> sciTuple = sciInfo_.back();
             // Get received SCI and it's corresponding RsrpVector
-            LteAirFrame* frame = get<0>(sciInfo_[i]);
-            std::vector<double> rsrpVector = get<1>(sciInfo_[i]);
-            std::vector<double> rssiVector = get<2>(sciInfo_[i]);
-            std::vector<double> sinrVector = get<3>(sciInfo_[i]);
-            double attenuation = get<4>(sciInfo_[i]);
+            LteAirFrame* frame = get<0>(sciTuple);
+            std::vector<double> rsrpVector = get<1>(sciTuple);
+            std::vector<double> rssiVector = get<2>(sciTuple);
+            std::vector<double> sinrVector = get<3>(sciTuple);
+            double attenuation = get<4>(sciTuple);
+
+            sciInfo_.pop_back();
 
             UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(frame->removeControlInfo());
 
@@ -250,9 +253,8 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbDecodedIgnoreSCI ,-1);
             }
         }
-        for (int i=0; i<tbInfo_.size(); i++)
-        {
-            if(std::find(missingTbs.begin(), missingTbs.end(), i) != missingTbs.end()) {
+        while (!tbInfo_.empty()){
+            if(std::find(missingTbs.begin(), missingTbs.end(), countTbs) != missingTbs.end()) {
                 // This corresponds to where we are missing a TB, record results as being negative to identify this.
                 emit(txRxDistanceTB, -1);
                 emit(tbReceived, -1);
@@ -268,11 +270,14 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
                 emit(tbDecodedIgnoreSCI ,-1);
             } else {
-                LteAirFrame* frame = get<0>(tbInfo_[i]);
-                std::vector<double> rsrpVector = get<1>(tbInfo_[i]);
-                std::vector<double> rssiVector = get<2>(tbInfo_[i]);
-                std::vector<double> sinrVector = get<3>(tbInfo_[i]);
-                double attenuation = get<4>(tbInfo_[i]);
+                std::tuple<LteAirFrame*, std::vector<double>, std::vector<double>, std::vector<double>, double, double> tbTuple = tbInfo_.back();
+                LteAirFrame* frame = get<0>(tbTuple);
+                std::vector<double> rsrpVector = get<1>(tbTuple);
+                std::vector<double> rssiVector = get<2>(tbTuple);
+                std::vector<double> sinrVector = get<3>(tbTuple);
+                double attenuation = get<4>(tbTuple);
+
+                tbInfo_.pop_back();
 
                 UserControlInfo *lteInfo = check_and_cast<UserControlInfo *>(frame->removeControlInfo());
 
@@ -304,6 +309,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 tbFailedDueToInterferenceIgnoreSCI_ = 0;
                 tbDecodedIgnoreSCI_ = 0;
             }
+            countTbs++;
         }
         std::vector<cPacket*>::iterator it;
         for(it=scis_.begin();it!=scis_.end();it++)
