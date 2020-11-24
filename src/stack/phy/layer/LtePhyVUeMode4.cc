@@ -196,7 +196,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 tbFrame->setControlInfo(tbInfo);
             }
             if (!foundTB){
-                missingTbs.push_back(i);
+                missingTbs.push_back(sciInfo_.size() - i);
             }
             sciFrame->setControlInfo(sciInfo);
         }
