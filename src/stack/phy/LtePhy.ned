@@ -95,6 +95,8 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 	    int oneShotT2 = default(25);
 	    int oneShotT3 = default(100);
 	    bool randomScheduling = default(false);
+	    bool counterMechanism = default(false);
+	    int counterMaximum = default(40);
 	    int pStep = default(100);
         int numSubchannels = default(10);
 	    int subchannelSize = default(5);
@@ -105,15 +107,11 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 
 	    @signal[cbr];
  		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
-
  		@signal[cbrPscch];
- 		@statistic[cbrPscch](title="Channel Busy Ratio for PSSCH"; source="cbrPscch"; record=mean,vector);
+        @statistic[cbrPscch](title="Channel Busy Ratio for PSCCH"; source="cbrPscch"; record=mean,vector);
 
  		@signal[threshold];
         @statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
-
-        @signal[periodic];
-        @statistic[periodic](title="Identifies traffic as periodic or aperiodic"; source="periodic"; record=vector);
 
  		@signal[sciSent];
         @statistic[sciSent](title="Number of sci sent"; source="sciSent"; record=sum,vector);
@@ -152,6 +150,10 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 		@statistic[tbFailedButSCIReceived](title="Number of failed TBs with a decoded SCI"; source="tbFailedButSCIReceived"; record=sum,vector);
 		@signal[tbAndSCINotReceived];
 		@statistic[tbAndSCINotReceived](title="Number of failed TBs with a failed SCI"; source="tbAndSCINotReceived"; record=sum,vector);
+		@signal[threshold];
+		@statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
+		@signal[periodic];
+		@statistic[periodic](title="Identifies traffic as periodic or aperiodic"; source="periodic"; record=vector);
 
 		@signal[tbFailedHalfDuplex];
         @statistic[tbFailedHalfDuplex](title="Number of failed TBs due to Half Duplex"; source="tbFailedHalfDuplex"; record=sum,vector);
