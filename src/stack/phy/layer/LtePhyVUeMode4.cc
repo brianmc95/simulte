@@ -204,7 +204,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 tbFrame->setControlInfo(tbInfo);
             }
             if (!foundTB){
-                missingTbs.push_back(sciInfo_.size() - i);
+                missingTbs.push_back(sciInfo_.size() - 1 - i);
             }
             sciFrame->setControlInfo(sciInfo);
         }
@@ -247,25 +247,10 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
 
         }
         int countTbs = 0;
-        if (tbInfo_.empty()){
-            for(countTbs; countTbs<missingTbs.size(); countTbs++){
-                emit(txRxDistanceTB, -1);
-                emit(tbReceived, -1);
-                emit(tbDecoded, -1);
-                emit(tbFailedDueToNoSCI, -1);
-                emit(tbFailedDueToProp, -1);
-                emit(tbFailedDueToInterference, -1);
-                emit(tbFailedButSCIReceived, -1);
-                emit(tbFailedHalfDuplex, -1);
-                emit(periodic, -1);
-
-                emit(tbFailedDueToPropIgnoreSCI ,-1);
-                emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
-                emit(tbDecodedIgnoreSCI ,-1);
-            }
-        }
         while (!tbInfo_.empty()){
-            if(std::find(missingTbs.begin(), missingTbs.end(), countTbs) != missingTbs.end()) {
+            auto missingPosition = std::find(missingTbs.begin(), missingTbs.end(), countTbs);
+            if(missingPosition != missingTbs.end()) {
+                missingTbs.erase(missingPosition);
                 // This corresponds to where we are missing a TB, record results as being negative to identify this.
                 emit(txRxDistanceTB, -1);
                 emit(tbReceived, -1);
@@ -321,6 +306,23 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 tbDecodedIgnoreSCI_ = 0;
             }
             countTbs++;
+        }
+        if (!missingTbs.empty()){
+            for(int i=0; i<missingTbs.size(); i++){
+                emit(txRxDistanceTB, -1);
+                emit(tbReceived, -1);
+                emit(tbDecoded, -1);
+                emit(tbFailedDueToNoSCI, -1);
+                emit(tbFailedDueToProp, -1);
+                emit(tbFailedDueToInterference, -1);
+                emit(tbFailedButSCIReceived, -1);
+                emit(tbFailedHalfDuplex, -1);
+                emit(periodic, -1);
+
+                emit(tbFailedDueToPropIgnoreSCI ,-1);
+                emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
+                emit(tbDecodedIgnoreSCI ,-1);
+            }
         }
         std::vector<cPacket*>::iterator it;
         for(it=scis_.begin();it!=scis_.end();it++)
@@ -941,7 +943,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
 
                 for (int q = 1; q <= Q; q++) {
 
-                    for (int j = 1; j < cResel; j++) {
+                    for (int j = 1; j <= cResel; j++) {
                         int disallowedSubframe = (z + (j * pRsvpTxPrime)) - (pStep_ * q * (*k));
                         // Only mark as disallowed if it corresponds with a frame in the selection window
                         if (disallowedSubframe >= minSelectionIndex && disallowedSubframe <= maxSelectionIndex) {
