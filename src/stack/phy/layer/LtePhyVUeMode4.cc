@@ -554,6 +554,8 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
             lteInfo->setDirection(D2D_MULTI);
             if (oneShotMechanism_){
                 lteInfo->setPeriodic(false);
+            } else if (sciGrant_->getNonPeriodic()) {
+                lteInfo->setPeriodic(false);
             } else {
                 lteInfo->setPeriodic(true);
             }
@@ -589,7 +591,9 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
 
         if (oneShotMechanism_){
             lteInfo->setPeriodic(false);
-        } else {
+        } else if (sciGrant_->getNonPeriodic()) {
+            lteInfo->setPeriodic(false);
+        }else {
             lteInfo->setPeriodic(true);
         }
 
@@ -1058,7 +1062,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                             int thresholdIncreaseFactor = 1;
                             thresholdBreach = true;
                             while (averageRSRP > thresholdDbm) {
-                                thresholdDbm = thresholdDbm + (3 * thresholdIncreaseFactor);
+                                thresholdDbm += 3;
                                 ++thresholdIncreaseFactor;
                             }
                             if (thresholdIncreaseFactor > highestThreshold) {
@@ -2126,7 +2130,7 @@ void LtePhyVUeMode4::counterMechanism()
     // Setup counter 0,CW-1
     if (currentCounter_ == -1 & !counterTriggered_){
         // Have not setup the counter so time to do so
-        currentCounter_ = intuniform(0, counterMax_-1, 2);
+        currentCounter_ = intuniform(1, counterMax_-1, 2);
         counterTriggered_ == true;
 
         cMessage* updateSubframe = new cMessage("CounterMessage");

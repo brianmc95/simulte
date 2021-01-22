@@ -138,6 +138,7 @@ protected:
     std::vector<double> possibleRRIs;
     bool retransmission;
     bool firstTransmission;
+    bool nonPeriodic;
     unsigned int timeGapTransRetrans;
     unsigned int spsPriority;
     unsigned int numSubchannels;
@@ -161,6 +162,7 @@ public:
         retransSubchannel = 0;
         resourceReselectionCounter = 0;
         firstTransmission = true;
+        nonPeriodic = false;
         startTime = simTime();
     }
 
@@ -187,6 +189,7 @@ public:
         retransSubchannel = other.retransSubchannel;
         resourceReselectionCounter = other.resourceReselectionCounter;
         possibleRRIs = other.possibleRRIs;
+        nonPeriodic = other.nonPeriodic;
         LteSchedulingGrant::operator=(other);
         return *this;
     }
@@ -291,6 +294,14 @@ public:
     void setFirstTransmission(bool firstTransmission)
     {
         this->firstTransmission = firstTransmission;
+    }
+    bool getNonPeriodic() const
+    {
+        return nonPeriodic;
+    }
+    void setNonPeriodic(bool nonPeriodic)
+    {
+        this->nonPeriodic = nonPeriodic;
     }
 };
 
