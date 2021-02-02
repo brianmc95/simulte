@@ -58,9 +58,11 @@ void LtePhyVUeMode4::initialize(int stage)
         rsrpFiltering_                   = par("rsrpFiltering");
 
         oneShotMechanism_                = par("oneShotMechanism");
+        oneShotCsrMechanism_             = par("oneShotCsrMechanism");
         oneShotT2_                       = par("oneShotT2");
         oneShotT3_                       = par("oneShotT3");
         oneShotSensing_                  = false;
+        csrSensing_                      = false;
 
         int thresholdRSSI                = par("thresholdRSSI");
 
@@ -85,6 +87,7 @@ void LtePhyVUeMode4::initialize(int stage)
         sciReceived                 = registerSignal("sciReceived");
         sciDecoded                  = registerSignal("sciDecoded");
         oneShot                     = registerSignal("oneShot");
+        csrReschedule               = registerSignal("csrReschedule");
 
         sciFailedDueToProp          = registerSignal("sciFailedDueToProp");
         sciFailedDueToInterference  = registerSignal("sciFailedDueToInterference");
@@ -439,6 +442,31 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             // Mark all the subchannels as not sensed
             sensingWindow_[sensingWindowFront_][i]->setSensed(false);
         }
+
+        std::vector<std::tuple<double, int, int>> orderedCSRs;
+
+        orderedCSRs.push_back(std::make_tuple(-std::numeric_limits<double>::infinity(), selectedSubframe, selectedSubchannel));
+
+        // Send the packet up to the MAC layer where it will choose the CSR and the retransmission if that is specified
+        // Need to generate the message that is to be sent to the upper layers.
+        SpsCandidateResources* candidateResourcesMessage = new SpsCandidateResources("CSRs");
+        candidateResourcesMessage->setCSRs(orderedCSRs);
+        send(candidateResourcesMessage, upperGateOut_);
+
+        delete msg;
+    }
+    else if (msg->isName("csrTimer"))
+    {
+        csrSensing_ = false;
+
+        int selectedSubframe = csrSubframe_;
+        int selectedSubchannel = csrSubchannel_;
+
+        simtime_t elapsed_time = NOW.trunc(SIMTIME_MS) - csrStartTime_.trunc(SIMTIME_MS);
+
+        int elapsed_ms = elapsed_time.dbl() * 1000;
+
+        selectedSubframe = selectedSubframe - elapsed_ms;
 
         std::vector<std::tuple<double, int, int>> orderedCSRs;
 
@@ -1210,31 +1238,59 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
         return;
     } else {
         // Simply convert the possible CSRs to the correct format and shuffle them and return 20% of them as normal.
-        std::vector<std::tuple<double, int, int>> orderedCSRs;
-        std::unordered_map<int, std::set<int>>::iterator it;
+        std::vector <std::tuple<double, int, int>> orderedCSRs;
+        std::unordered_map < int, std::set < int >> ::iterator
+        it;
 
-        for (it=possibleCSRs.begin(); it!=possibleCSRs.end(); it++)
-        {
+        for (it = possibleCSRs.begin(); it != possibleCSRs.end(); it++) {
             int subframe = it->first;
             std::set<int>::iterator jt;
-            for (jt=it->second.begin(); jt!=it->second.end(); jt++)
-            {
+            for (jt = it->second.begin(); jt != it->second.end(); jt++) {
                 int sensingSubframeIndex = subframe;
                 int initialSubchannelIndex = *jt;
                 int finalSubchannelIndex = *jt + grantLength;
 
                 // Subchannel has never been reserved and thus has negative infinite RSSI.
                 int transIndex = subframe - sensingWindowLength;
-                orderedCSRs.push_back(std::make_tuple(-std::numeric_limits<double>::infinity(), transIndex, initialSubchannelIndex));
+                orderedCSRs.push_back(
+                        std::make_tuple(-std::numeric_limits<double>::infinity(), transIndex, initialSubchannelIndex));
             }
         }
         // Shuffle ensures that the subframes and subchannels appear in a random order, making the selections more balanced
         // throughout the selection window.
-        std::random_shuffle (orderedCSRs.begin(), orderedCSRs.end());
+        std::random_shuffle(orderedCSRs.begin(), orderedCSRs.end());
 
         int minSize = std::round(totalPossibleCSRs * .2);
         orderedCSRs.resize(minSize);
         optimalCSRs = orderedCSRs;
+    }
+
+    if (oneShotCsrMechanism_){
+        // Select random element from vector
+        int index = intuniform(0, optimalCSRs.size()-1, 1);
+
+        std::tuple<double, int, int> selectedCR = optimalCSRs[index];
+        // Gives us the time at which we will send the subframe.
+        simtime_t selectedStartTime = (simTime() + SimTime(std::get<1>(selectedCR), SIMTIME_MS) - (TTI * 2)).trunc(SIMTIME_MS);
+
+        csrSubframe_ = std::get<1>(selectedCR);
+        csrSubchannel_ = std::get<2>(selectedCR);
+
+        sciGrant_ = grant;
+
+        csrSignal_ = new cMessage("csrTimer");
+        csrSignal_->setSchedulingPriority(1);        // Generate the subframe at start of next TTI
+        scheduleAt(selectedStartTime, csrSignal_);
+
+        csrSignalTime_ = selectedStartTime;
+
+        csrStartTime_ = NOW.trunc(SIMTIME_MS);
+
+        csrSensing_ = true;
+
+        nonOneShotCSRs_ = optimalCSRs;
+
+        return;
     }
 
     // Send the packet up to the MAC layer where it will choose the CSR and the retransmission if that is specified
@@ -1780,6 +1836,82 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                         currentSubchannel->setOneShotSubchannelIndex(sci->getOneShotLocation());
                         currentSubchannel->setReserved(true);
 
+                        if (csrSensing_){
+                            if (sci->getTimeGapRetrans() > 0) {
+                                // We need to get this and look at subchannels in T2->T3 which overlap
+                                int subframe_in_future = sci->getTimeGapRetrans();
+                                int subchannel_in_future = sci->getOneShotLocation();
+
+                                double ttis_in_future = sci->getTimeGapRetrans();
+                                ttis_in_future = (ttis_in_future-1) * TTI;
+                                simtime_t reservationTime = (NOW + ttis_in_future).trunc(SIMTIME_MS);
+                                if (reservationTime == csrSignalTime_ &&
+                                    subchannel_in_future == csrSubchannel_) {
+                                    // Need to defer or decide on having the collision if this is the last subchannel
+                                    // and subframe in the selection window then send, otherwise defer
+                                    int breakOut = 100;
+
+                                    // emit csr Rescheduled.
+
+
+                                    simtime_t elapsed_time =
+                                            NOW.trunc(SIMTIME_MS) - csrStartTime_.trunc(SIMTIME_MS);
+
+                                    int elapsed_ms = elapsed_time.dbl() * 1000;
+
+                                    // If no other possible resource then simply maintain the default
+                                    int selectedSubframe = csrSubframe_;
+                                    int selectedSubchannel = csrSubchannel_;
+
+                                    if (elapsed_ms < 100) { // Assume selection window of 100ms
+                                        // Can defer this transmission
+
+                                        std::vector<std::tuple<double, int, int>>::iterator csrIt;
+                                        for (csrIt=nonOneShotCSRs_.begin(); csrIt < nonOneShotCSRs_.end(); csrIt++){
+                                            simtime_t selectedStartTime = (csrStartTime_ + SimTime(std::get<1>(*csrIt), SIMTIME_MS) - (TTI * 2)).trunc(SIMTIME_MS);
+                                            if (selectedStartTime > (simTime() + (TTI * 2))) {
+                                                selectedSubframe = std::get<1>(*csrIt);
+                                                selectedSubchannel = std::get<2>(*csrIt);
+                                                break;
+                                            }
+                                        }
+                                        simtime_t selectedStartTime = (csrStartTime_.trunc(SIMTIME_MS) +
+                                                SimTime(selectedSubframe -2,
+                                                        SIMTIME_MS)).trunc(SIMTIME_MS);
+
+                                        csrSubframe_ = selectedSubframe;
+                                        csrSubchannel_ = selectedSubchannel;
+
+                                        cancelEvent(csrSignal_); // Cancel the previous signal
+
+                                        emit(csrReschedule, 1);
+
+                                        csrSignal_ = new cMessage("csrTimer");
+                                        csrSignal_->setSchedulingPriority(
+                                                1);        // Generate the subframe at start of next TTI
+                                        scheduleAt(selectedStartTime, csrSignal_);
+
+                                        csrSignalTime_ = selectedStartTime;
+
+                                        csrSensing_ = true;
+                                    }
+                                } else {
+                                    // Remove from list if it appears in the list v rare
+
+                                    simtime_t elapsed_time = NOW.trunc(SIMTIME_MS) - csrStartTime_.trunc(SIMTIME_MS);
+                                    int elapsed_ms = elapsed_time.dbl() * 1000;
+
+                                    std::vector<std::tuple<double, int, int>>::iterator csrIt;
+                                    for (csrIt=nonOneShotCSRs_.begin(); csrIt < nonOneShotCSRs_.end(); csrIt++){
+                                        if ((subframe_in_future == std::get<1>(*csrIt) - elapsed_ms) &
+                                        (subchannel_in_future == std::get<2>(*csrIt))){
+                                            nonOneShotCSRs_.erase(csrIt);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         if (oneShotSensing_) {
                             if (sci->getTimeGapRetrans() > 0) {
                                 // We need to get this and look at subchannels in T2->T3 which overlap
@@ -1918,10 +2050,6 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 std::tuple<bool, bool> res = channelModel_->error_Mode4(frame, lteInfo, rsrpVector, sinrVector, 0);
                 prop_result = get<0>(res);
                 interference_result = get<1>(res);
-
-                subchannelReceived_ = subchannelIndex;
-                subchannelsUsed_ = lengthInSubchannels;
-                emit(senderID, lteInfo->getSourceId());
 
                 RbMap::iterator mt;
                 std::map<Band, unsigned int>::iterator nt;

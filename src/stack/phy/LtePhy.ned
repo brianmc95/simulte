@@ -92,6 +92,7 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 	    bool rssiFiltering = default(true);
 	    bool rsrpFiltering = default(false);
 	    bool oneShotMechanism = default(false);
+	    bool oneShotCsrMechanism = default(false);
 	    int oneShotT2 = default(25);
 	    int oneShotT3 = default(100);
 	    bool randomScheduling = default(false);
@@ -122,6 +123,9 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 		@statistic[sciDecoded](title="Number of sci successfully decoded"; source="sciDecoded"; record=sum,vector);
 		@signal[oneShot];
         @statistic[oneShot](title="oneShot sci"; source="oneShot"; record=sum,vector);
+
+        @signal[csrReschedule];
+        @statistic[csrReschedule](title="CSR rescheduling "; source="subchannelsUsedToSend"; record=sum,vector);
 
         @signal[sciFailedHalfDuplex];
         @statistic[sciFailedHalfDuplex](title="Number of failed SCIs due to Half Duplex"; source="sciFailedHalfDuplex"; record=sum,vector);

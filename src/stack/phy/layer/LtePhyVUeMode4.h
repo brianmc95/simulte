@@ -36,9 +36,12 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     bool transmitting_;
     bool randomScheduling_;
     bool oneShotMechanism_;
+    bool oneShotCsrMechanism_;
     bool oneShotSensing_;
+    bool csrSensing_;
 
     std::unordered_map<int, std::set<int>> oneShotCSRs_;
+    std::vector<std::tuple<double, int, int>> nonOneShotCSRs_;
 
     int oneShotT2_;
     int oneShotT3_;
@@ -46,6 +49,12 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     simtime_t oneShotSignalTime_;
     simtime_t oneShotStartTime_;
     cMessage* sendOneShotSignal_;
+
+    int csrSubchannel_;
+    int csrSubframe_;
+    simtime_t csrSignalTime_;
+    simtime_t csrStartTime_;
+    cMessage* csrSignal_;
 
     bool rssiFiltering_;
     bool rsrpFiltering_;
@@ -77,6 +86,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     simsignal_t sciReceived;
     simsignal_t sciDecoded;
     simsignal_t oneShot;
+    simsignal_t csrReschedule;
 
     simsignal_t sciFailedHalfDuplex;
     simsignal_t sciFailedDueToProp;
