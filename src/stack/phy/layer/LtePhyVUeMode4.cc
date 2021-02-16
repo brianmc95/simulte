@@ -1906,6 +1906,7 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                                         if ((subframe_in_future == std::get<1>(*csrIt) - elapsed_ms) &
                                         (subchannel_in_future == std::get<2>(*csrIt))){
                                             nonOneShotCSRs_.erase(csrIt);
+                                            break;
                                         }
                                     }
                                 }
