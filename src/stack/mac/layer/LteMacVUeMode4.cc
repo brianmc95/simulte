@@ -1412,32 +1412,15 @@ void LteMacVUeMode4::flushHarqBuffers()
             ++missedTransmissions_;
             emit(missedTransmission, 1);
 
-            LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
-
-            UserControlInfo* uinfo = new UserControlInfo();
-            uinfo->setSourceId(getMacNodeId());
-            uinfo->setDestId(getMacNodeId());
-            uinfo->setFrameType(GRANTPKT);
-            uinfo->setTxNumber(1);
-            uinfo->setDirection(D2D_MULTI);
-            uinfo->setUserTxParams(preconfiguredTxParams_->dup());
-
-            phyGrant->setControlInfo(uinfo);
-
             if (missedTransmissions_ >= reselectAfter_)
             {
-                phyGrant->setPeriod(0);
-                phyGrant->setExpiration(0);
-
+                // Simply remove the grant next time we shall reschedule it.
                 delete schedulingGrant_;
                 schedulingGrant_ = NULL;
                 missedTransmissions_ = 0;
 
                 emit(grantBreakMissedTrans, 1);
             }
-
-            // Send Grant to PHY layer for sci creation
-            sendLowerPackets(phyGrant);
         }
     }
     if (expiredGrant_) {
