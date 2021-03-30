@@ -54,6 +54,7 @@ void LtePhyVUeMode4::initialize(int stage)
         counterTriggered_                = false;
         d2dDecodingTimer_                = NULL;
         transmitting_                    = false;
+        beginTransmission_               = false;
         rssiFiltering_                   = par("rssiFiltering");
         rsrpFiltering_                   = par("rsrpFiltering");
 
@@ -341,6 +342,10 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
     else if (msg->isName("updateSubframe"))
     {
         transmitting_ = false;
+        if (beginTransmission_){
+            transmitting_ = true;
+            beginTransmission_ = false;
+        }
         updateSubframe();
         if (cbrCountDown_ == 0) {
             // Ensures we update CBR every 100ms
@@ -435,7 +440,7 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
 
         sendOneShotMessage(uinfo, selectedSubframe - 1, selectedSubchannel); // -1 ensures the correct subframe logged i.e. account for trans time.
 
-        transmitting_ = true;
+        beginTransmission_ = true;
 
         for (int i=0; i<numSubchannels_; i++)
         {
@@ -613,7 +618,7 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
            << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
 
         // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
-        transmitting_ = true;
+        beginTransmission_ = true;
 
         lteInfo->setGrantedBlocks(availableRBs_);
 
@@ -2335,7 +2340,7 @@ void LtePhyVUeMode4::counterMechanism()
 void LtePhyVUeMode4::counterMechanismSend(int initialSubchannel)
 {
     // About to transmit so make sure that we mark this as a transmission
-    transmitting_ = true;
+    beginTransmission_ = true;
 
     cMessage* msg = counterMessage_;
 

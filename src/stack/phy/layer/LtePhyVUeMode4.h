@@ -34,6 +34,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     int sensingWindowSizeOverride_;
 
     bool transmitting_;
+    bool beginTransmission_;
     bool randomScheduling_;
     bool oneShotMechanism_;
     bool oneShotCsrMechanism_;
