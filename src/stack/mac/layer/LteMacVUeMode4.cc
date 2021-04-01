@@ -99,6 +99,7 @@ void LteMacVUeMode4::initialize(int stage)
         macNodeID               = registerSignal("macNodeID");
         rrcSelected             = registerSignal("resourceReselectionCounter");
         retainGrant             = registerSignal("retainGrant");
+        rriChange               = registerSignal("rriChange");
     }
     else if (stage == inet::INITSTAGE_NETWORK_LAYER_3)
     {
@@ -1144,6 +1145,7 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
         emit(rrcSelected, 0);
     } else {
 
+        mode4Grant -> setNonPeriodic(false);
         // Based on restrictResourceReservation interval But will be between 1 and 15
         // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
         int resourceReselectionCounter = 0;
@@ -1268,6 +1270,8 @@ void LteMacVUeMode4::flushHarqBuffers()
 
                         if (rri != mode4Grant->getPeriod()) {
                             periodCounter_ = rri;
+
+                            emit(rriChange, rri);
 
                             if (periodCounter_ > expirationCounter_) {
                                 // Gotten to the point of the final transmission must determine if we reselect or not.

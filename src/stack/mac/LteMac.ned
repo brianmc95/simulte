@@ -429,6 +429,8 @@ simple LteMacVUeMode4 extends LteMacNonIPBase
         @statistic[grantRequests](title="Total number of requested grants"; source="grantRequests"; record=sum,vector);
         @signal[packetDropDCC];
         @statistic[packetDropDCC](title="Packet drop due to DCC mechanism"; source="packetDropDCC"; record=sum,vector);
+        @signal[rriChange];
+        @statistic[rriChange](title="RRI Change due to mechanism"; source="rriChange"; record=sum,vector);
         @signal[resourceReselectionCounter];
         @statistic[resourceReselectionCounter](title="ResourceReselectionCounter selectedNumber of transmissions"; source="resourceReselectionCounter"; record=sum,vector);
         @signal[retainGrant];

@@ -118,6 +118,7 @@ protected:
    simsignal_t macNodeID;
    simsignal_t rrcSelected;
    simsignal_t retainGrant;
+   simsignal_t rriChange;
 
 //   // Lte AMC module
 //   LteAmc *amc_;
