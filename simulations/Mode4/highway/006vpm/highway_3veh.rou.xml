@@ -1,0 +1,7 @@
+<routes>
+
+	<vType id="vtype0" accel="2.6" decel="4.5" sigma="0.5" length="4" minGap="50" maxSpeed="38.89" departLane="0" departSpeed="max"/>
+
+	<flow id="flow0" type="vtype0" number="3" probability="0.5" from="LS" to="RE" departLane="0" departSpeed="max"  begin="0"/>
+	
+</routes>

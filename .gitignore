@@ -1,0 +1,55 @@
+# ignore generated files
+*_m.h
+*_m.cc
+src/Makefile
+src/Makefile.vc
+/doc/doxy/
+/doc/neddoc/
+*.pcap
+*.sca
+*.vec
+*.anf
+*.qtenvrc
+.settings/
+
+# ignore binary files
+out/
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+*.exe
+*.o
+*.obj
+*.pdb
+*.idb
+*.manifest
+.tkenvrc
+.tkenvlog
+*.out
+.computed
+
+# ignore backup and temp files
+*.bak
+backups
+*~
+*.log
+
+
+*.FAILED
+.cproject
+.project
+ui/com.simulte.configeditor/bin/
+
+# ignore result folders
+/simulations/gtpNetwork/ResultLteCoreNetwork/
+/simulations/*/results*/
+/simulations/*/*/results*/
+/simulations/*/*/*/results*/
+/simulations/*/scenario*/
+/simulations/*/eval*/
+/simulations/*/.cmdenv-log
+
+# ignore cLion editor
+.idea/

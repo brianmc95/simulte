@@ -1,0 +1,7 @@
+<launch>
+  <basedir path="UPDATE-WITH-YOUR-PATH"/>
+  <copy file="highway.net.xml"/>
+  <copy file="highway.rou.xml"/>
+  <copy file="rerouters.add.xml"/>
+  <copy file="highway.sumo.cfg" type="config"/>
+</launch>

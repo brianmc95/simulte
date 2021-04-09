@@ -1,0 +1,27 @@
+<additional>
+   <route id="route0" color="1,1,0" edges="RS RSLE LE"/>   
+   <route id="route1" color="0,1,1" edges="RE RELSL LS"/>
+   <route id="route2" color="0,1,1" edges="LS LSRE RE"/>
+   <route id="route3" color="1,1,0" edges="LE LERSL RS"/>
+
+   <rerouter id="rerouter_0" edges="RS">
+       <interval end="1000">
+          <routeProbReroute id="route0"/>
+       </interval>
+   </rerouter>
+   <rerouter id="rerouter_1" edges="RE">
+       <interval end="1000">
+          <routeProbReroute id="route1"/>
+       </interval>
+   </rerouter>
+   <rerouter id="rerouter_2" edges="LS">
+       <interval end="1000">
+          <routeProbReroute id="route2"/>
+       </interval>
+   </rerouter>
+   <rerouter id="rerouter_3" edges="LE">
+       <interval end="1000">
+          <routeProbReroute id="route3"/>
+       </interval>
+   </rerouter>
+</additional>
