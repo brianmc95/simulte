@@ -59,11 +59,15 @@ void Mode4App::initialize(int stage)
         rcvdMsg_ = registerSignal("rcvdMsg");
         cbr_ = registerSignal("cbr");
 
+<<<<<<< HEAD
 //        starting the app at the same time for all veh
 //        double delay = 0.001 ;
 
         double delay = 0.001 * intuniform(0, 1000, 0);
 
+=======
+        double delay = 0.001 * intuniform(0, 1000, 0);
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
         scheduleAt((simTime() + delay).trunc(SIMTIME_MS), selfSender_);
     }
 }

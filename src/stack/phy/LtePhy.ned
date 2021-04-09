@@ -173,10 +173,13 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
         @statistic[tbFailedDueToInterferenceIgnoreSCI](title="Number of failed TBs due to interference"; source="tbFailedDueToInterferenceIgnoreSCI"; record=sum,vector);
         @signal[tbDecodedIgnoreSCI];
         @statistic[tbDecodedIgnoreSCI](title="Number of failed TBs due to interference"; source="tbDecodedIgnoreSCI"; record=sum,vector);
+<<<<<<< HEAD
         
         @signal[tbFailedDueToCol];
         @statistic[tbFailedDueToCol](title="Number of failed TBs due to radio resource collision"; source="tbFailedDueToCol"; record=sum,vector);
         
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
 }
 
 // 

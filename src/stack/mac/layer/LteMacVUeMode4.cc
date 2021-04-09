@@ -868,9 +868,12 @@ void LteMacVUeMode4::handleSelfMessage()
     EV << "--- END UE MAIN LOOP ---" << endl;
 }
 
+<<<<<<< HEAD
 
 
 
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
 void LteMacVUeMode4::macHandleSps(cPacket* pkt)
 {
     /**   This is where we add the subchannels to the actual scheduling grant, so a few things
@@ -888,6 +891,7 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
     int index = intuniform(0, CSRs.size()-1, 1);
 
     std::tuple<double, int, int> selectedCR = CSRs[index];
+<<<<<<< HEAD
 
 //    //    Changes have been made to fix the <subframe, subchannel> for all vehicles
 //        std::tuple<double, int, int> selectedCR ;
@@ -897,6 +901,8 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
 //            selectedCR = std::make_tuple(-128, 5, 0);
 
 
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
     // Gives us the time at which we will send the subframe.
     simtime_t selectedStartTime = (simTime() + SimTime(std::get<1>(selectedCR), SIMTIME_MS) - TTI).trunc(SIMTIME_MS);
 

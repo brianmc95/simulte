@@ -4,10 +4,15 @@
         <ChannelModel type="REAL">
         	<!-- Enable/disable shadowing -->       
             <parameter name="shadowing" type="bool" value="true"/>
+<<<<<<< HEAD
             <parameter name="correlation-distance" type="int" value="25"/>
             <!-- Pathloss scenario from ITU -->   
             <parameter name="scenario" type="string" value="ANALYTICAL"/>
             <parameter name="model-analytical" type="bool" value="true"/>
+=======
+            <!-- Pathloss scenario from ITU -->   
+            <parameter name="scenario" type="string" value="ANALYTICAL"/>
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
             <!-- eNodeB height -->
             <parameter name="nodeb-height" type="double" value="25"/>
             <!-- Building height -->
@@ -41,10 +46,16 @@
             <!-- If dynamic-los is false this parameter, if true, compute LOS pathloss otherwise compute NLOS pathloss -->
             <parameter name="fixed-los" type="bool" value="true"/>
             <!-- Enable/disable fading -->  
+<<<<<<< HEAD
             <parameter name="fading" type="bool" value="false"/>
             <!-- Fading type (JAKES or RAYGHLEY or NAKAGAMI) -->
             <parameter name="fading-type" type="string" value="NAKAGAMI"/>
             <parameter name="shape-factor" type="double" value="1.1"/>
+=======
+            <parameter name="fading" type="bool" value="true"/>
+            <!-- Fading type (JAKES or RAYGHLEY) -->  
+            <parameter name="fading-type" type="string" value="NAKAGAMI"/>
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
             <!-- If jakes fading this parameter specify the number of path (tap channel) -->  
             <parameter name="fading-paths" type="int" value="6"/> 
 			<!-- if true, enables the inter-cell interference computation -->  
@@ -64,4 +75,8 @@
              <parameter name="lambdaMaxTh" type="double" value="0.2"/>
              <parameter name="lambdaRatioTh" type="double" value="20"/>
         </FeedbackComputation>
+<<<<<<< HEAD
 </root>
+=======
+</root>
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46

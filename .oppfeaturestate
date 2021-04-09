@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <featurestates>
+<<<<<<< HEAD
     <feature enabled="true" id="SimuLTE_Cars"/>
+=======
+    <feature enabled="false" id="SimuLTE_Cars"/>
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
 </featurestates>

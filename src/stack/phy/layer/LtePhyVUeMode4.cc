@@ -102,9 +102,12 @@ void LtePhyVUeMode4::initialize(int stage)
         tbFailedDueToInterferenceIgnoreSCI = registerSignal("tbFailedDueToInterferenceIgnoreSCI");
         tbDecodedIgnoreSCI                 = registerSignal("tbDecodedIgnoreSCI");
 
+<<<<<<< HEAD
         tbFailedDueToCol                 = registerSignal("tbFailedDueToCol");
         tbFailedDueToCol_ = 0;
 
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
         sciReceived_ = 0;
         sciDecoded_ = 0;
         sciFailedHalfDuplex_ = 0;
@@ -200,9 +203,12 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             emit(subchannelReceived, subchannelReceived_);
             emit(subchannelsUsed, subchannelsUsed_);
 
+<<<<<<< HEAD
             emit(tbFailedDueToCol, tbFailedDueToCol_);
             tbFailedDueToCol_ = 0;
 
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
             sciReceived_ = 0;
             sciDecoded_ = 0;
             sciFailedHalfDuplex_ = 0;
@@ -227,8 +233,11 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToPropIgnoreSCI ,-1);
                 emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
                 emit(tbDecodedIgnoreSCI ,-1);
+<<<<<<< HEAD
 
                 emit(tbFailedDueToCol, -1);
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
             }
         }
         while (!tbFrames_.empty())
@@ -247,9 +256,12 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
                 emit(tbFailedDueToPropIgnoreSCI ,-1);
                 emit(tbFailedDueToInterferenceIgnoreSCI ,-1);
                 emit(tbDecodedIgnoreSCI ,-1);
+<<<<<<< HEAD
 
                 emit(tbFailedDueToCol, -1);
 
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
             } else {
                 LteAirFrame *frame = tbFrames_.back();
                 std::vector<double> rsrpVector = tbRsrpVectors_.back();
@@ -402,11 +414,14 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
             lteInfo->setGrantedBlocks(sciGrant_->getGrantedBlocks());
             lteInfo->setTotalGrantedBlocks(sciGrant_->getTotalGrantedBlocks());
             lteInfo->setDirection(D2D_MULTI);
+<<<<<<< HEAD
 
             lteInfo->setSubchannelNumber(int(sciGrant_->getStartingSubchannel()));
             subChannel = int(sciGrant_->getStartingSubchannel());
             subChannelTime = sciGrant_->getStartTime();
 
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
             availableRBs_ = sendSciMessage(msg, lteInfo);
             for (int i=0; i<numSubchannels_; i++)
             {
@@ -1313,6 +1328,7 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 // Packet was not sensed so mark as such and delete it.
                 lteInfo->setDeciderResult(false);
                 sciUnsensed_ += 1;
+<<<<<<< HEAD
             }
             else
             {
@@ -1420,6 +1436,48 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
 
             }
 
+=======
+            } else {
+                std::tuple<bool, bool> res = channelModel_->error_Mode4(frame, lteInfo, rsrpVector, sinrVector, 0);
+                prop_result = get<0>(res);
+                interference_result = get<1>(res);
+
+                SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
+                std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
+                int subchannelIndex = std::get<0>(indexAndLength);
+                int lengthInSubchannels = std::get<1>(indexAndLength);
+
+                subchannelReceived_ = subchannelIndex;
+                subchannelsUsed_ = lengthInSubchannels;
+                emit(senderID, lteInfo->getSourceId());
+
+                if (interference_result) {
+
+                    std::vector < Subchannel * > currentSubframe = sensingWindow_[sensingWindowFront_];
+                    for (int i = subchannelIndex; i < subchannelIndex + lengthInSubchannels; i++) {
+                        Subchannel *currentSubchannel = currentSubframe[i];
+                        // Record the SCI info in the subchannel.
+                        currentSubchannel->setPriority(sci->getPriority());
+                        currentSubchannel->setResourceReservationInterval(sci->getResourceReservationInterval());
+                        currentSubchannel->setFrequencyResourceLocation(sci->getFrequencyResourceLocation());
+                        currentSubchannel->setTimeGapRetrans(sci->getTimeGapRetrans());
+                        currentSubchannel->setMcs(sci->getMcs());
+                        currentSubchannel->setRetransmissionIndex(sci->getRetransmissionIndex());
+                        currentSubchannel->setSciSubchannelIndex(subchannelIndex);
+                        currentSubchannel->setSciLength(lengthInSubchannels);
+                        currentSubchannel->setReserved(true);
+                    }
+                    lteInfo->setDeciderResult(true);
+                    sciDecoded_ += 1;
+                } else if (!prop_result) {
+                    lteInfo->setDeciderResult(false);
+                    sciFailedDueToProp_ += 1;
+                } else {
+                    lteInfo->setDeciderResult(false);
+                    sciFailedDueToInterference_ += 1;
+                }
+            }
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
             pkt->setControlInfo(lteInfo);
             scis_.push_back(pkt);
         }

@@ -1,7 +1,13 @@
 <launch>
+<<<<<<< HEAD
   <basedir path="/home/anshika/simulte-master/simulations/Mode4/highway/006vpm"/>
   <copy file="highway.net.xml"/>
   <copy file="highway_3veh.rou.xml"/>
+=======
+  <basedir path="UPDATE-WITH-YOUR-PATH"/>
+  <copy file="highway.net.xml"/>
+  <copy file="highway.rou.xml"/>
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
   <copy file="rerouters.add.xml"/>
   <copy file="highway.sumo.cfg" type="config"/>
 </launch>

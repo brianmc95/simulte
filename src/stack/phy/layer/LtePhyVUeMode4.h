@@ -38,9 +38,12 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     bool rssiFiltering_;
     bool rsrpFiltering_;
 
+<<<<<<< HEAD
     int subChannel;
     simtime_t subChannelTime;
 
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
     std::map<MacNodeId, simtime_t> previousTransmissionTimes_;
 
     std::vector<int> ThresPSSCHRSRPvector_;
@@ -97,9 +100,12 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     simsignal_t tbFailedDueToInterferenceIgnoreSCI;
     simsignal_t tbDecodedIgnoreSCI;
 
+<<<<<<< HEAD
     simsignal_t tbFailedDueToCol;
     int tbFailedDueToCol_;
 
+=======
+>>>>>>> 51d6febab625bfdb30015c417012510f02f21c46
     int sciReceived_;
     int sciDecoded_;
     int sciFailedHalfDuplex_;
