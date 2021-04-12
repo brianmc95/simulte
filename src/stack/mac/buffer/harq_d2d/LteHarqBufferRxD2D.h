@@ -12,6 +12,7 @@
 
 #include "stack/mac/buffer/harq/LteHarqBufferRx.h"
 #include "stack/mac/buffer/harq_d2d/LteHarqProcessRxD2D.h"
+#include "stack/mac/buffer/harq_d2d/LteHarqProcessRxMode4.h"
 
 class LteHarqProcessRxD2D;
 
@@ -42,7 +43,7 @@ class LteHarqBufferRxD2D : public LteHarqBufferRx
     virtual void sendFeedback();
 
   public:
-    LteHarqBufferRxD2D(unsigned int num, LteMacBase *owner, MacNodeId nodeId, bool isMulticast=false);
+    LteHarqBufferRxD2D(unsigned int num, LteMacBase *owner, MacNodeId nodeId, bool isMulticast=false, bool isMode4=false);
 
     /*
      * Insertion of a new pdu coming from phy layer into

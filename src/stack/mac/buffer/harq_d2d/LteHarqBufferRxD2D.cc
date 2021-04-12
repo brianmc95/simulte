@@ -14,7 +14,7 @@
 #include "stack/mac/layer/LteMacBase.h"
 #include "stack/mac/layer/LteMacEnb.h"
 
-LteHarqBufferRxD2D::LteHarqBufferRxD2D(unsigned int num, LteMacBase *owner, MacNodeId nodeId, bool isMulticast)
+LteHarqBufferRxD2D::LteHarqBufferRxD2D(unsigned int num, LteMacBase *owner, MacNodeId nodeId, bool isMulticast, bool isMode4)
 {
     macOwner_ = owner;
     nodeId_ = nodeId;
@@ -23,10 +23,18 @@ LteHarqBufferRxD2D::LteHarqBufferRxD2D(unsigned int num, LteMacBase *owner, MacN
     processes_.resize(numHarqProcesses_);
     totalRcvdBytes_ = 0;
     isMulticast_ = isMulticast;
+    isMode4_ = isMode4;
 
-    for (unsigned int i = 0; i < numHarqProcesses_; i++)
-    {
-        processes_[i] = new LteHarqProcessRxD2D(i, macOwner_);
+    if (isMode4_){
+        for (unsigned int i = 0; i < numHarqProcesses_; i++)
+        {
+            processes_[i] = new LteHarqProcessRxMode4(i, macOwner_);
+        }
+    } else {
+        for (unsigned int i = 0; i < numHarqProcesses_; i++)
+        {
+            processes_[i] = new LteHarqProcessRxD2D(i, macOwner_);
+        }
     }
 
     /* Signals initialization: those are used to gather statistics */

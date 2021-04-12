@@ -44,6 +44,7 @@ class LteHarqBufferRx
 
     /// flag for multicast flows
     bool isMulticast_;
+    bool isMode4_;
 
     //Statistics
     static unsigned int totalCellRcvdBytes_;

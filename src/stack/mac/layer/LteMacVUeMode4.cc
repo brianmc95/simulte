@@ -793,6 +793,14 @@ void LteMacVUeMode4::handleSelfMessage()
         }
     }
 
+    unsigned int purged =0;
+    // purge from corrupted PDUs all Rx H-HARQ buffers
+    for (hit= harqRxBuffers_.begin(); hit != het; ++hit)
+    {
+        purged += hit->second->purgeCorruptedPdus();
+    }
+    EV << NOW << " LteMacVUeMode4::handleSelfMessage Purged " << purged << " PDUS" << endl;
+
     EV << NOW << "LteMacVUeMode4::handleSelfMessage " << nodeId_ << " - HARQ process " << (unsigned int)currentHarq_ << endl;
     // updating current HARQ process for next TTI
 
@@ -953,17 +961,6 @@ void LteMacVUeMode4::handleSelfMessage()
         }
     }
     //======================== END DEBUG ==========================
-
-    unsigned int purged =0;
-    // purge from corrupted PDUs all Rx H-HARQ buffers
-    for (hit= harqRxBuffers_.begin(); hit != het; ++hit)
-    {
-        // purge corrupted PDUs only if this buffer is for a DL transmission. Otherwise, if you
-        // purge PDUs for D2D communication, also "mirror" buffers will be purged
-        if (hit->first == cellId_)
-            purged += hit->second->purgeCorruptedPdus();
-    }
-    EV << NOW << " LteMacVUeMode4::handleSelfMessage Purged " << purged << " PDUS" << endl;
 
     if (!requestSdu)
     {
