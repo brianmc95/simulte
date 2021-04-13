@@ -869,8 +869,6 @@ void LteMacVUeMode4::handleSelfMessage()
         {
             EV << "\t currentHarq_ counter initialized " << endl;
             firstTx=true;
-            // the eNb will receive the first pdu in 2 TTI, thus initializing acid to 0
-//            currentHarq_ = harqRxBuffers_.begin()->second->getProcesses() - 2;
             currentHarq_ = UE_TX_HARQ_PROCESSES - 2;
         }
         EV << "\t " << schedulingGrant_ << endl;
