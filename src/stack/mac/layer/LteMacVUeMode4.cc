@@ -737,10 +737,7 @@ void LteMacVUeMode4::handleMessage(cMessage *msg)
             FlowControlInfoNonIp* lteInfo = check_and_cast<FlowControlInfoNonIp*>(pkt->removeControlInfo());
             receivedTime_ = NOW;
             simtime_t elapsedTime = receivedTime_ - lteInfo->getCreationTime();
-            simtime_t duration = SimTime(lteInfo->getDuration(), SIMTIME_MS);
-            duration = duration - elapsedTime;
-            double dur = duration.dbl();
-            remainingTime_ = lteInfo->getDuration() - dur;
+            remainingTime_ = lteInfo->getDuration() - (elapsedTime.dbl() * 1000);
 
             if (schedulingGrant_ == NULL)
             {
@@ -1380,9 +1377,8 @@ void LteMacVUeMode4::flushHarqBuffers()
                         // Never found an MCS to satisfy the requirements of the message must regenerate grant
                         LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
                         int priority = mode4Grant->getSpsPriority();
-                        int latency = mode4Grant->getMaximumLatency();
                         simtime_t elapsedTime = NOW - receivedTime_;
-                        remainingTime_ -= elapsedTime.dbl();
+                        remainingTime_ -= (elapsedTime.dbl() * 1000);
 
                         emit(grantBreakSize, pduLength);
                         emit(maximumCapacity, mcsCapacity);
