@@ -84,6 +84,7 @@ void LteMacVUeMode4::initialize(int stage)
         // Register the necessary signals for this simulation
 
         grantStartTime          = registerSignal("grantStartTime");
+        takingReservedGrant     = registerSignal("takingReservedGrant");
         grantBreak              = registerSignal("grantBreak");
         grantBreakTiming        = registerSignal("grantBreakTiming");
         grantBreakSize          = registerSignal("grantBreakSize");
@@ -975,14 +976,14 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
      * 4. return
      */
     SpsCandidateResources* candidatesPacket = check_and_cast<SpsCandidateResources *>(pkt);
-    std::vector<std::tuple<double, int, int>> CSRs = candidatesPacket->getCSRs();
+    std::vector<std::tuple<double, int, int, bool>> CSRs = candidatesPacket->getCSRs();
 
     LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
 
     // Select random element from vector
     int index = intuniform(0, CSRs.size()-1, 1);
 
-    std::tuple<double, int, int> selectedCR = CSRs[index];
+    std::tuple<double, int, int, bool> selectedCR = CSRs[index];
     // Gives us the time at which we will send the subframe.
     simtime_t selectedStartTime = (simTime() + SimTime(std::get<1>(selectedCR), SIMTIME_MS) - TTI).trunc(SIMTIME_MS);
 
@@ -990,10 +991,12 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
 
     int initiailSubchannel = std::get<2>(selectedCR);
     int finalSubchannel = initiailSubchannel + mode4Grant->getNumSubchannels(); // Is this actually one additional subchannel?
+    bool reservedCSR = std::get<3>(selectedCR);
 
     // Emit statistic about the use of resources, i.e. the initial subchannel and it's length.
     emit(selectedSubchannelIndex, initiailSubchannel);
     emit(selectedNumSubchannels, mode4Grant->getNumSubchannels());
+    emit(takingReservedGrant, reservedCSR);
 
     // Determine the RBs on which we will send our message
     RbMap grantedBlocks;

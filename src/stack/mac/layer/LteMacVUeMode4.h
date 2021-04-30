@@ -103,6 +103,7 @@ protected:
    UeInfo* ueInfo_;
 
    simsignal_t grantStartTime;
+   simsignal_t takingReservedGrant;
    simsignal_t grantBreak;
    simsignal_t grantBreakTiming;
    simsignal_t grantBreakSize;

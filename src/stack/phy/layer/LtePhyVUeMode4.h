@@ -42,7 +42,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     bool csrSensing_;
 
     std::unordered_map<int, std::set<int>> oneShotCSRs_;
-    std::vector<std::tuple<double, int, int>> nonOneShotCSRs_;
+    std::vector<std::tuple<double, int, int, bool>> nonOneShotCSRs_;
 
     int oneShotT2_;
     int oneShotT3_;
@@ -193,9 +193,11 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
 
     virtual void updateSubframe();
 
-    virtual std::vector<std::tuple<double, int, int>> selectBestRSSIs(std::unordered_map<int, std::set<int>> possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
+    virtual std::vector<std::tuple<double, int, int, bool>> selectBestRSSIs(std::unordered_map<int, std::set<int>> possibleCSRs,
+            LteMode4SchedulingGrant* &grant, int totalPossibleCSRs, std::unordered_map<int, std::unordered_map<int, bool>> reservedCSRs);
 
-    virtual std::vector<std::tuple<double, int, int>> selectBestRSRPs(std::unordered_map<int, std::set<int>> possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
+    virtual std::vector<std::tuple<double, int, int, bool>> selectBestRSRPs(std::unordered_map<int, std::set<int>> possibleCSRs,
+            LteMode4SchedulingGrant* &grant, int totalPossibleCSRs, std::unordered_map<int, std::unordered_map<int, bool>> reservedCSRs);
 
     virtual std::tuple<int,int> decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo);
 

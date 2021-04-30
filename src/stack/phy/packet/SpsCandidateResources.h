@@ -24,7 +24,7 @@ class SpsCandidateResources: public SpsCandidateResources_Base
 {
   protected:
 
-    std::vector<std::tuple<double, int, int>> CSRs;
+    std::vector<std::tuple<double, int, int, bool>> CSRs;
 
   public:
 
@@ -54,12 +54,12 @@ class SpsCandidateResources: public SpsCandidateResources_Base
         return new SpsCandidateResources(*this);
     }
 
-    virtual void setCSRs(const std::vector<std::tuple<double, int, int>> CSRs )
+    virtual void setCSRs(const std::vector<std::tuple<double, int, int, bool>> CSRs )
     {
         this->CSRs = CSRs;
     }
 
-    virtual std::vector<std::tuple<double, int, int>> getCSRs()
+    virtual std::vector<std::tuple<double, int, int, bool>> getCSRs()
     {
         return CSRs;
     }

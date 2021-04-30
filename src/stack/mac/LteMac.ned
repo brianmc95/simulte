@@ -405,6 +405,8 @@ simple LteMacVUeMode4 extends LteMacNonIPBase
 
 		@signal[grantStartTime];
 		@statistic[grantStartTime](title="Grant StartTime"; source="grantStartTime"; record=sum,vector);
+		@signal[takingReservedGrant];
+        @statistic[takingReservedGrant](title="takingReservedGrant"; source="takingReservedGrant"; record=mean,vector);
 		@signal[grantBreak];
         @statistic[grantBreak](title="Total Number of Grant breaks"; source="grantBreak"; record=sum,vector);
         @signal[grantBreakTiming];
