@@ -1268,7 +1268,7 @@ void LteMacVUeMode4::flushHarqBuffers()
 
                             emit(rriChange, rri);
 
-                            if (periodCounter_ > expirationCounter_) {
+                            if (periodCounter_ < expirationCounter_) {
                                 // Gotten to the point of the final transmission must determine if we reselect or not.
                                 double randomReReserve = dblrand(1);
                                 if (randomReReserve > probResourceKeep_) {
