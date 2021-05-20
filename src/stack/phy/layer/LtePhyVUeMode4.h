@@ -40,6 +40,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     bool oneShotCsrMechanism_;
     bool oneShotSensing_;
     bool csrSensing_;
+    bool checkAwareness_;
 
     std::unordered_map<int, std::set<int>> oneShotCSRs_;
     std::vector<std::tuple<double, int, int, bool>> nonOneShotCSRs_;
@@ -153,6 +154,11 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     simsignal_t subchannelSent;
     simsignal_t subchannelsUsedToSend;
     simsignal_t interPacketDelay;
+
+    simsignal_t awareness1sStat;
+    simsignal_t awareness500msStat;
+    simsignal_t awareness200msStat;
+
     simsignal_t posX;
     simsignal_t posY;
 
@@ -202,6 +208,10 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     virtual std::tuple<int,int> decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo);
 
     virtual void updateCBR();
+
+    virtual void recordAwareness();
+
+    virtual std::vector<MacNodeId> getNeighbours();
 
     virtual void initialiseSensingWindow();
 

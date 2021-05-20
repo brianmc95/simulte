@@ -88,23 +88,33 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 	parameters:   
 	    @class("LtePhyVUeMode4");
 	    
-	    bool adjacencyPSCCHPSSCH = default(true);
-	    bool rssiFiltering = default(true);
-	    bool rsrpFiltering = default(false);
-	    bool oneShotMechanism = default(false);
-	    bool oneShotCsrMechanism = default(false);
-	    int oneShotT2 = default(25);
-	    int oneShotT3 = default(100);
-	    bool randomScheduling = default(false);
-	    bool counterMechanism = default(false);
-	    int counterMaximum = default(40);
-	    int pStep = default(100);
-        int numSubchannels = default(10);
-	    int subchannelSize = default(5);
+	    bool adjacencyPSCCHPSSCH            = default(true);
+
+	    bool rssiFiltering                  = default(true);
+	    bool rsrpFiltering                  = default(false);
+
+	    bool oneShotMechanism               = default(false);
+	    bool oneShotCsrMechanism            = default(false);
+
+	    bool randomScheduling               = default(false);
+
+        bool counterMechanism               = default(false);
+
+        bool checkAwareness                 = default(false);
+
+	    int oneShotT2                       = default(25);
+	    int oneShotT3                       = default(100);
+	    int counterMaximum                  = default(40);
+
+	    int pStep                           = default(100);
+        int numSubchannels                  = default(10);
+	    int subchannelSize                  = default(5);
 	    int selectionWindowStartingSubframe = default(1);
-	    int shapeFactor = default(6);
-	    int thresholdRSSI = default(22);
-	    int sensingWindowSizeOverride = default(-1);
+	    int thresholdRSSI                   = default(22);
+
+	    int sensingWindowSizeOverride       = default(-1);
+
+	    int shapeFactor                     = default(6);
 
 	    @signal[cbr];
  		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
@@ -192,6 +202,13 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 
         @signal[interPacketDelay];
         @statistic[interPacketDelay](title="Delay between packet receptions from a node"; source="interPacketDelay"; record=mean,vector);
+
+        @signal[awareness1sStat];
+        @statistic[awareness1sStat](title="Node Awareness 1s window"; source="awareness1sStat"; record=mean,vector);
+        @signal[awareness500msStat];
+        @statistic[awareness500msStat](title="Node Awareness 500ms window"; source="awareness500msStat"; record=mean,vector);
+        @signal[awareness200msStat];
+        @statistic[awareness200msStat](title="Node Awareness 200ms window"; source="awareness200msStat"; record=mean,vector);
 
         @signal[posX];
         @statistic[posX](title="X position of node (at reception time)"; source="posX"; record=mean, vector);

@@ -64,6 +64,7 @@ void LtePhyVUeMode4::initialize(int stage)
         oneShotT3_                       = par("oneShotT3");
         oneShotSensing_                  = false;
         csrSensing_                      = false;
+        checkAwareness_                  = par("checkAwareness");
 
         int thresholdRSSI                = par("thresholdRSSI");
 
@@ -154,6 +155,11 @@ void LtePhyVUeMode4::initialize(int stage)
         subchannelSent              = registerSignal("subchannelSent");
         subchannelsUsedToSend       = registerSignal("subchannelsUsedToSend");
         interPacketDelay            = registerSignal("interPacketDelay");
+
+        awareness1sStat             = registerSignal("awareness1sStat");
+        awareness500msStat          = registerSignal("awareness500msStat");
+        awareness200msStat          = registerSignal("awareness200msStat");
+
         posX                        = registerSignal("posX");
         posY                        = registerSignal("posY");
 
@@ -351,6 +357,11 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             // Ensures we update CBR every 100ms
             updateCBR();
             cbrCountDown_ = 99;
+            if (checkAwareness_) {
+                // Function allow to check IPG table to see if nodes have successfully decoded packets
+                // within a defined range in the last 1s/500ms/200ms
+                recordAwareness();
+            }
         } else {
             cbrCountDown_ --;
         }
@@ -2576,6 +2587,76 @@ void LtePhyVUeMode4::updateCBR()
     Cbr* cbrPkt = new Cbr("CBR");
     cbrPkt->setCbr(cbrValue);
     send(cbrPkt, upperGateOut_);
+}
+
+void LtePhyVUeMode4::recordAwareness()
+{
+    double totalNeighbours      = 0.0;
+    double awareNeighbours1s    = 0.0;
+    double awareNeighbours500ms = 0.0;
+    double awareNeighbours200ms = 0.0;
+
+    // Retrieve list of nodes within 200 -> 300m from here
+    std::vector<MacNodeId> neighbours = getNeighbours();
+    // run that list through the previous transmissions list
+    std::vector<MacNodeId>::iterator it;
+    for (it=neighbours.begin(); it<neighbours.end(); it++){
+        std::map<MacNodeId, simtime_t>::iterator jt = previousTransmissionTimes_.find(*it);
+        if ( jt != previousTransmissionTimes_.end() ) {
+            simtime_t elapsed_time = NOW - jt->second;
+            if (elapsed_time < SimTime(200, SIMTIME_MS)){
+                // Aware of it recently
+                awareNeighbours1s++;
+                awareNeighbours500ms++;
+                awareNeighbours200ms++;
+            } else if (elapsed_time < SimTime(500, SIMTIME_MS)){
+                // Aware of it somewhat recently
+                awareNeighbours1s++;
+                awareNeighbours500ms++;
+            } else if (elapsed_time < SimTime(1000, SIMTIME_MS)) {
+                // Aware of it
+                awareNeighbours1s++;
+            }
+        }
+    }
+
+    totalNeighbours = neighbours.size();
+
+    double awareness1s    = awareNeighbours1s / totalNeighbours;
+    double awareness500ms = awareNeighbours500ms / totalNeighbours;
+    double awareness200ms = awareNeighbours200ms / totalNeighbours;
+
+    emit(awareness1sStat, awareness1s);
+    emit(awareness500msStat, awareness500ms);
+    emit(awareness200msStat, awareness200ms);
+}
+
+std::vector<MacNodeId> LtePhyVUeMode4::getNeighbours()
+{
+    // Actually get the neighbours
+    std::vector<MacNodeId> neighbours;
+
+    // Reference to the Physical Channel  of the Interfering UE
+    LtePhyBase * ltePhy;
+
+    // So how can we determine where our neighbours are.
+    std::vector<UeInfo*> * ueList = binder_->getUeList();
+    std::vector<UeInfo*>::iterator it = ueList->begin(), et = ueList->end();
+
+    // For all the UEs
+    for(;it!=et;it++) {
+        //Get the id of the interfering node
+        MacNodeId neighbourID = (*it)->id;
+
+        ltePhy = (*it)->phy;
+
+        double distance = getCoord().distance(ltePhy->getCoord());
+
+        if (distance >= 200 & distance <= 300)
+            neighbours.push_back(neighbourID);
+    }
+
+    return neighbours;
 }
 
 void LtePhyVUeMode4::updateSubframe()
